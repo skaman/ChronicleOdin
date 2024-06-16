@@ -2,7 +2,6 @@ package ecs
 
 import "core:mem"
 import "core:reflect"
-import "core:testing"
 
 @private
 Archetype_Column :: struct {

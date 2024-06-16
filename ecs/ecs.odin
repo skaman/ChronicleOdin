@@ -1,13 +1,11 @@
 package ecs
 
-import "core:fmt"
-import "core:sort"
 import "core:slice"
-import "core:testing"
 import "core:log"
-import "core:reflect"
-import "core:mem"
+
+import "core:testing"
 import "core:math/rand"
+import "core:mem"
 
 import "../utils"
 
