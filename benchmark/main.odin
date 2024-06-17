@@ -1,10 +1,10 @@
 package benchmark
 
 import "core:time"
-import "core:log"
+import "core:fmt"
 
 run_benchmark :: proc(work: proc(), pre: proc(), post: proc(), iterations: u32, description: string) {
-    log.info("Running benchmark:", description)
+    fmt.println("Running benchmark:", description)
     total_duration := time.Duration(0)
     for i in 0..<iterations {
         pre()
@@ -15,12 +15,10 @@ run_benchmark :: proc(work: proc(), pre: proc(), post: proc(), iterations: u32, 
         post()
     }
     ns := f64(time.duration_nanoseconds(total_duration) / i64(iterations))
-    log.infof("Average duration: %f us", ns / 1_000)
+    fmt.printfln("Average duration: %f us", ns / 1_000)
 }
 
 main :: proc() {
-	context.logger = log.create_console_logger()
-
     test_create_1_entity()
     test_create_100_entity()
     test_create_10000_entity()
@@ -33,7 +31,7 @@ main :: proc() {
     test_set_100_component()
     test_set_10000_component()
 
-    test_set_1_existing_component()
-    test_set_100_existing_component()
-    test_set_10000_existing_component()
+    test_query_1_component()
+    test_query_1000_component()
+    test_query_100000_component()
 }
