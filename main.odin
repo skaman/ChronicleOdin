@@ -2,23 +2,51 @@ package main
 
 import "core:log"
 import "core:mem"
+import "core:thread"
 
 import "ecs"
-import "utils"
+import "platform"
 
-Component_A :: struct {
-    x: u32,
-    y: u32
-}
 
-Component_B :: struct {
-    x: f32,
-    y: f32
-}
+worker :: proc(t: ^thread.Thread) {
+    window_ids := make(map[platform.Window_Id]bool)
+    defer delete(window_ids)
 
-Component_C :: struct {
-    x: u64,
-    y: u64
+    for i in 0..<4 {
+        x := i < 2 ? 100 : 900
+        y := i % 2 == 0 ? 100 : 700
+        window_id := platform.create_window({"Chronicle", i32(x), i32(y), 800, 600, nil})
+        window_ids[window_id] = true
+    }
+
+    for {
+        for event in platform.poll() {
+            switch _ in event {
+                case platform.Window_Close_Requested:
+                    window_id := event.(platform.Window_Close_Requested).window_id
+                    platform.destroy_window(window_id)
+                    window_ids[window_id] = false
+                case platform.Window_Created:
+                    log.info("Window created")
+                case platform.Window_Destroyed:
+                    log.info("Window destroyed")
+            }
+        }
+
+        all_closed := true
+        for _, value in window_ids {
+            if value {
+                all_closed = false
+                break
+            }
+        }
+
+        if all_closed {
+            return
+        }
+        
+        thread.yield()
+    }
 }
 
 main :: proc() {
@@ -29,32 +57,13 @@ main :: proc() {
 	context.logger = log.create_console_logger()
     context.allocator = mem.tracking_allocator(&tracking_allocator)
 
+    platform.init()
     ecs.init()
 
-	entity1 := ecs.create_entity()
-	log.info("entity id:", entity1)
-
-    entity2 := ecs.create_entity({typeid_of(Component_A), typeid_of(Component_B)})
-    log.info("entity id:", entity2)
-
-    entity3 := ecs.create_entity({typeid_of(Component_A), typeid_of(Component_B)})
-    log.info("entity id:", entity3)
-
-    log.info("entity1 exists:", ecs.exists_entity(entity1))
-    log.info("entity2 exists:", ecs.exists_entity(entity2))
-    log.info("entity3 exists:", ecs.exists_entity(entity3))
-
-    ecs.add_components(entity1, {typeid_of(Component_C), typeid_of(Component_B)})
-    ecs.add_components(entity2, {typeid_of(Component_B)})
-    ecs.add_components(entity3, {typeid_of(Component_C)})
-
-    ecs.delete_entity(entity2)
-
-    log.info("entity1 exists:", ecs.exists_entity(entity1))
-    log.info("entity2 exists:", ecs.exists_entity(entity2))
-    log.info("entity3 exists:", ecs.exists_entity(entity3))
+    platform.run(worker)
 
 	ecs.destroy()
+    platform.destroy()
 
     free_all(context.temp_allocator)
 
