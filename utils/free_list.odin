@@ -7,9 +7,9 @@ FREE_LIST_INITIAL_CAPACITY :: 16
 
 // Free_List is a type that represents a free list data structure.
 Free_List :: struct($Type: typeid) {
-    data: [dynamic]Type,  // The underlying data array.
-    next_free_index: u32, // The index of the next free element in the data array.
-    size: u32             // The number of elements in the data array.
+    data: [dynamic]Type,        // The underlying data array.
+    next_free_index: u32,       // The index of the next free element in the data array.
+    size: u32                   // The number of elements in the data array.
 }
 
 // Initializes a Free_List instance with the specified capacity.

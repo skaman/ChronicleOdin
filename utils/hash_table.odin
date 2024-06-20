@@ -5,27 +5,27 @@ import "core:testing"
 
 // Hash_Table_Iterator is a type that represents an iterator for a hash table.
 Hash_Table_Iterator :: struct($Key, $Value: typeid) {
-    key: Key,                             // The key of the current entry.
-    value: Value,                         // The value of the current entry.
-    _hash_table: ^Hash_Table(Key, Value), // The hash table being iterated.
-    _index: u32                           // The current index of the iterator.
+    key: Key,                               // The key of the current entry.
+    value: Value,                           // The value of the current entry.
+    _hash_table: ^Hash_Table(Key, Value),   // The hash table being iterated.
+    _index: u32                             // The current index of the iterator.
 }
 
 // Hash_Table_Entry is a type that represents an entry in a hash table.
 @(private="file")
 Hash_Table_Entry :: struct($Key, $Value: typeid) {
-    is_used: bool, // Indicates whether the entry is used.
-    key: Key,      // The key of the entry.
-    value: Value   // The value of the entry.
+    is_used: bool,                          // Indicates whether the entry is used.
+    key: Key,                               // The key of the entry.
+    value: Value                            // The value of the entry.
 }
 
 // Hash_Table is a type that represents a hash table data structure.
 Hash_Table :: struct($Key, $Value: typeid) {
-    _hash_proc: proc(key: Key) -> u64, // The hash function for the keys.
-    _eq_proc: proc(a, b: Key) -> bool, // The equality function for the keys.
-    _data: rawptr,                     // The underlying data array.
-    _capacity: u32,                    // The capacity of the data array.
-    _count: u32                        // The number of elements in the data array.
+    _hash_proc: proc(key: Key) -> u64,      // The hash function for the keys.
+    _eq_proc: proc(a, b: Key) -> bool,      // The equality function for the keys.
+    _data: rawptr,                          // The underlying data array.
+    _capacity: u32,                         // The capacity of the data array.
+    _count: u32                             // The number of elements in the data array.
 }
 
 HASH_TABLE_INITIAL_CAPACITY :: 64
