@@ -47,7 +47,7 @@ test_free_list :: proc(t: ^testing.T) {
     expected := [11]u64{0, 1, 2, 11, 4, 12, 6, 10, 8, 9, 13}
     for i in 0..<11 {
         value := get_from_free_list(&fl, u32(i))
-        testing.expectf(t, value == expected[i], "value is not correct: %d", value)
+        testing.expectf(t, value^ == expected[i], "value is not correct: %d", value)
     }
 
     // Test destroy_free_list

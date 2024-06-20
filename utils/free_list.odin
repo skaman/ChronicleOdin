@@ -100,14 +100,14 @@ remove_from_free_list :: proc (fl: ^Free_List($Type), index: u32) {
 //   index: u32 - The index of the value to get from the Free_List data array.
 //
 // Returns:
-//   Type - The value at the specified index in the Free_List data array.
+//   ^Type - A pointer to the value at the specified index in the Free_List data array.
 @require_results
-get_from_free_list :: proc (fl: ^Free_List($Type), index: u32) -> Type {
+get_from_free_list :: proc (fl: ^Free_List($Type), index: u32) -> ^Type {
     assert(fl != nil, "Free_List pointer is nil")
     assert(fl.data != nil, "Free_List data is nil")
 
     assert(index < u32(len(fl.data)), "Index out of bounds")
     assert(index != math.max(u32), "Index is invalid")
 
-    return fl.data[index]
+    return &fl.data[index]
 }
