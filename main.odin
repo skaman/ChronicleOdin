@@ -15,21 +15,30 @@ worker :: proc(t: ^thread.Thread) {
     for i in 0..<4 {
         x := i < 2 ? 100 : 900
         y := i % 2 == 0 ? 100 : 700
-        window_id := platform.create_window({"Chronicle", i32(x), i32(y), 800, 600, nil})
+        window_id := platform.create_window({"Chronicle", i32(x), i32(y), 800, 600})
         window_ids[window_id] = true
     }
 
     for {
         for event in platform.poll() {
             switch _ in event {
-                case platform.Window_Close_Requested:
-                    window_id := event.(platform.Window_Close_Requested).window_id
+                case platform.Window_Close_Requested_Event:
+                    window_id := event.(platform.Window_Close_Requested_Event).window_id
                     platform.destroy_window(window_id)
                     window_ids[window_id] = false
-                case platform.Window_Created:
+                case platform.Window_Created_Event:
                     log.info("Window created")
-                case platform.Window_Destroyed:
+                case platform.Window_Destroyed_Event:
                     log.info("Window destroyed")
+                case platform.Key_Event:
+                    key_event := event.(platform.Key_Event)
+                    log.infof("Key event: %v", key_event)
+                case platform.Char_Event:
+                    char_event := event.(platform.Char_Event)
+                    log.infof("Char event: %c", char_event.character)
+                case platform.Mouse_Event:
+                    mouse_event := event.(platform.Mouse_Event)
+                    log.infof("Mouse event: %v", mouse_event)
             }
         }
 
