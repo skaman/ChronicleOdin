@@ -36,8 +36,8 @@ worker :: proc(t: ^thread.Thread) {
                 case platform.Window_Destroyed_Event:
                     window_destroyed_event := event.(platform.Window_Destroyed_Event)
                     log.infof("Window destroyed: %v", window_destroyed_event)
-                case platform.Window_Move_Event:
-                    window_move_event := event.(platform.Window_Move_Event)
+                case platform.Window_Moved_Event:
+                    window_move_event := event.(platform.Window_Moved_Event)
                     log.infof("Window moved: %v", window_move_event)
                 case platform.Window_Resized_Event:
                     window_resized_event := event.(platform.Window_Resized_Event)

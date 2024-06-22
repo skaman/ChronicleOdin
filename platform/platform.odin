@@ -23,7 +23,7 @@ Window_Destroyed_Event :: struct {
 }
 
 // Structure for the event when a window is moved
-Window_Move_Event :: struct {
+Window_Moved_Event :: struct {
     window_id: Window_Id, // The identifier for the moved window
     x: i32,               // The new x-coordinate of the window
     y: i32,               // The new y-coordinate of the window
@@ -92,7 +92,7 @@ Platform_Event :: union {
     Window_Created_Event,          // Event for window creation
     Window_Destroyed_Event,        // Event for window destruction
     Window_Close_Requested_Event,  // Event for window close request
-    Window_Move_Event,             // Event for window move
+    Window_Moved_Event,            // Event for window move
     Window_Resized_Event,          // Event for window resize
     Key_Event,                     // Event for key actions
     Char_Event,                    // Event for character input
