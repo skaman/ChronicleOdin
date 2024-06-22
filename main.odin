@@ -12,12 +12,16 @@ worker :: proc(t: ^thread.Thread) {
     window_ids := make(map[platform.Window_Id]bool)
     defer delete(window_ids)
 
+    window_fullscreen := make(map[platform.Window_Id]bool)
+    defer delete(window_fullscreen)
+
     for i in 0..<4 {
         x := i < 2 ? 100 : 900
         y := i % 2 == 0 ? 100 : 700
         window_id := platform.create_window({"Chronicle", i32(x), i32(y), 800, 600})
         window_ids[window_id] = true
     }
+
 
     for {
         for event in platform.poll() {
@@ -27,18 +31,37 @@ worker :: proc(t: ^thread.Thread) {
                     platform.destroy_window(window_id)
                     window_ids[window_id] = false
                 case platform.Window_Created_Event:
-                    log.info("Window created")
+                    window_created_event := event.(platform.Window_Created_Event)
+                    log.infof("Window created: %v", window_created_event)
                 case platform.Window_Destroyed_Event:
-                    log.info("Window destroyed")
+                    window_destroyed_event := event.(platform.Window_Destroyed_Event)
+                    log.infof("Window destroyed: %v", window_destroyed_event)
+                case platform.Window_Resized_Event:
+                    window_resized_event := event.(platform.Window_Resized_Event)
+                    log.infof("Window resized: %v", window_resized_event)
                 case platform.Key_Event:
                     key_event := event.(platform.Key_Event)
                     log.infof("Key event: %v", key_event)
+                    #partial switch key_event.key {
+                        case .Key_0:
+                            platform.set_window_position(key_event.window_id, 0, 0)
+                        case .Key_1:
+                            platform.set_window_size(key_event.window_id, 1920, 1080)
+                        case .Key_2:
+                            platform.set_window_title(key_event.window_id, "New Title")
+                        case .Key_F:
+                            if key_event.pressed {
+                                platform.set_window_fullscreen(key_event.window_id, !window_fullscreen[key_event.window_id])
+                                window_fullscreen[key_event.window_id] = !window_fullscreen[key_event.window_id]
+                            }
+                        case:
+                    }
                 case platform.Char_Event:
                     char_event := event.(platform.Char_Event)
                     log.infof("Char event: %c", char_event.character)
                 case platform.Mouse_Event:
                     mouse_event := event.(platform.Mouse_Event)
-                    log.infof("Mouse event: %v", mouse_event)
+                    //log.infof("Mouse event: %v", mouse_event)
             }
         }
 

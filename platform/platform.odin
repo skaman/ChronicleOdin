@@ -18,6 +18,12 @@ Window_Destroyed_Event :: struct {
     window_id: Window_Id,
 }
 
+Window_Resized_Event :: struct {
+    window_id: Window_Id,
+    width: i32,
+    height: i32,
+}
+
 Window_Close_Requested_Event :: struct {
     window_id: Window_Id,
 }
@@ -48,6 +54,7 @@ Platform_Event :: union {
     Window_Created_Event,
     Window_Destroyed_Event,
     Window_Close_Requested_Event,
+    Window_Resized_Event,
     Key_Event,
     Char_Event,
     Mouse_Event,

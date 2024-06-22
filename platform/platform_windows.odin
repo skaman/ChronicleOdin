@@ -6,20 +6,18 @@ import "core:sync"
 
 import win32 "core:sys/windows"
 
-// TODO: remove
-import "core:fmt"
-
 import "../utils"
 
 @(private="file")
 Window_Info :: struct {
     handle: win32.HWND,
-    //title: string,
-    //x: Maybe(i32),
-    //y: Maybe(i32),
-    //width: Maybe(i32),
-    //height: Maybe(i32),
-    
+    style: win32.DWORD,
+    border_rect: win32.RECT,
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+    is_fullscreen: bool,
 }
 
 @(private="file")
@@ -34,9 +32,39 @@ App_Event_Destroy_Window :: struct {
 }
 
 @(private="file")
+App_Event_Set_Window_Position :: struct {
+    window_id: Window_Id,
+    x: i32,
+    y: i32,
+}
+
+@(private="file")
+App_Event_Set_Window_Size :: struct {
+    window_id: Window_Id,
+    width: i32,
+    height: i32,
+}
+
+@(private="file")
+App_Event_Set_Window_Title :: struct {
+    window_id: Window_Id,
+    title: string,
+}
+
+@(private="file")
+App_Event_Set_Window_Fullscreen :: struct {
+    window_id: Window_Id,
+    fullscreen: bool,
+}
+
+@(private="file")
 App_Event :: union {
     App_Event_Create_Window,
     App_Event_Destroy_Window,
+    App_Event_Set_Window_Position,
+    App_Event_Set_Window_Size,
+    App_Event_Set_Window_Title,
+    App_Event_Set_Window_Fullscreen,
 }
 
 @(private="file")
@@ -64,34 +92,62 @@ global_modifier_map : map[u8]Modifier
 global_surrogate : win32.WCHAR
 
 @(private="file")
+win32_add_window :: proc(info: Window_Info) -> Window_Id {
+    return Window_Id(utils.add_to_free_list(&global_windows, info) + 1)
+}
+
+win32_remove_window :: proc(window_id: Window_Id) {
+    utils.remove_from_free_list(&global_windows, u32(window_id) - 1)
+}
+
+@(private="file")
+win32_get_window :: proc(window_id: Window_Id) -> ^Window_Info {
+    return utils.get_from_free_list(&global_windows, u32(window_id) - 1)
+}
+
+@(private="file")
 win32_window_proc :: proc(hWnd: win32.HWND, Msg: win32.UINT, wParam: win32.WPARAM, lParam: win32.LPARAM) -> win32.LRESULT {
     window_id := Window_Id(win32.GetWindowLongW(hWnd, win32.GWLP_USERDATA))
 
     result: win32.LRESULT = 0
     switch Msg {
-        case win32.WM_SIZE:
-            fmt.println("WM_SIZE")
-        case win32.WM_CLOSE:
-            utils.push_sp_sc_queue(&global_win32_to_app_queue, Window_Close_Requested_Event{window_id})
-        //case win32.WM_DESTROY:
-        //    fmt.println("WM_DESTROY")
-        //    win32.PostQuitMessage(0)
-        //case win32.WM_ACTIVATEAPP:
-        //    fmt.println("WM_ACTIVATEAPP")
-        case win32.WM_SYSKEYDOWN, win32.WM_KEYDOWN:
-            key_event := Key_Event{
-                window_id,
-                win32_translate_key(u8(wParam)),
-                win32_translate_key_modifier(),
-                true,
+        case win32.WM_MOVE:
+            x := win32.LOWORD(u32(lParam))
+            y := win32.HIWORD(u32(lParam))
+            {
+                sync.mutex_lock(&global_windows_lock)
+                defer sync.mutex_unlock(&global_windows_lock)
+            
+                window_info := win32_get_window(window_id)
+                if !window_info.is_fullscreen {
+                    window_info.x = i32(x)
+                    window_info.y = i32(y)
+                }
             }
-            utils.push_sp_sc_queue(&global_win32_to_app_queue, key_event)
-        case win32.WM_SYSKEYUP, win32.WM_KEYUP:
+        case win32.WM_SIZE:
+            width := win32.LOWORD(u32(lParam))
+            height := win32.HIWORD(u32(lParam))
+            {
+                sync.mutex_lock(&global_windows_lock)
+                defer sync.mutex_unlock(&global_windows_lock)
+            
+                window_info := win32_get_window(window_id)
+                if !window_info.is_fullscreen {
+                    window_info.width = i32(width)
+                    window_info.height = i32(height)
+                }
+            }
+            utils.push_sp_sc_queue(&global_win32_to_app_queue, Window_Resized_Event{window_id, i32(width), i32(height)})
+        case win32.WM_CLOSE, win32.WM_QUIT:
+            utils.push_sp_sc_queue(&global_win32_to_app_queue, Window_Close_Requested_Event{window_id})
+        case win32.WM_DESTROY:
+            utils.push_sp_sc_queue(&global_win32_to_app_queue, Window_Destroyed_Event{window_id})
+        case win32.WM_SYSKEYDOWN, win32.WM_KEYDOWN, win32.WM_SYSKEYUP, win32.WM_KEYUP:
             key_event := Key_Event{
                 window_id,
                 win32_translate_key(u8(wParam)),
                 win32_translate_key_modifier(),
-                false,
+                Msg == win32.WM_SYSKEYDOWN || Msg == win32.WM_KEYDOWN,
             }
             utils.push_sp_sc_queue(&global_win32_to_app_queue, key_event)
         case win32.WM_CHAR:
@@ -203,9 +259,6 @@ win32_window_proc :: proc(hWnd: win32.HWND, Msg: win32.UINT, wParam: win32.WPARA
 win32_create_window :: proc(evn: App_Event_Create_Window) {
     instance := win32.HINSTANCE(win32.GetModuleHandleA(nil))
 
-    sync.mutex_lock(&global_windows_lock)
-    defer sync.mutex_unlock(&global_windows_lock)
-
     if global_window_class == nil {
         global_window_class = win32.WNDCLASSEXW {
             size_of(win32.WNDCLASSEXW),                  // cbSize
@@ -234,12 +287,24 @@ win32_create_window :: proc(evn: App_Event_Create_Window) {
     width := info.width.? or_else win32.CW_USEDEFAULT
     height := info.height.? or_else win32.CW_USEDEFAULT
 
+    style := win32.WS_OVERLAPPEDWINDOW
+    ex_style := win32.WS_EX_APPWINDOW
+
+    // Adjust the window size
+    border_rect : win32.RECT
+    win32.AdjustWindowRectEx(&border_rect, style, false, ex_style)
+    x += border_rect.left
+    y += border_rect.top
+    width += border_rect.right - border_rect.left
+    height += border_rect.bottom - border_rect.top
+
     title := win32.utf8_to_wstring(len(info.title) == 0 ? "Chronicle" : info.title);
     window_handle := win32.CreateWindowExW(
-        0,                                          // dwExStyle
+        ex_style,                                   // dwExStyle
         global_window_class.?.lpszClassName,        // lpClassName
         title,                                      // lpWindowName
-        win32.WS_OVERLAPPEDWINDOW|win32.WS_VISIBLE, // dwStyle
+        style,                                      // dwStyle
+        //win32.WS_POPUP | win32.WS_SYSMENU,
         x,                                          // x
         y,                                          // y
         width,                                      // width
@@ -247,14 +312,28 @@ win32_create_window :: proc(evn: App_Event_Create_Window) {
         nil,                                        // hWndParent
         nil,                                        // hMenu
         instance,                                   // hInstance
-        nil,                                        // lpParam
+        rawptr(uintptr(evn.window_id)),             // lpParam
     )
 
     if window_handle != nil {
-        win32.SetWindowLongW(window_handle, win32.GWLP_USERDATA, i32(evn.window_id))
+        {
+            sync.mutex_lock(&global_windows_lock)
+            defer sync.mutex_unlock(&global_windows_lock)
+        
+            window_info := win32_get_window(evn.window_id)
+            window_info.handle = window_handle
+            window_info.style = style
+            window_info.border_rect = border_rect
+            window_info.x = x
+            window_info.y = y
+            window_info.width = width
+            window_info.height = height
+        }
 
-        window_info := utils.get_from_free_list(&global_windows, u32(evn.window_id))
-        window_info.handle = window_handle
+        win32.SetWindowLongW(window_handle, win32.GWLP_USERDATA, i32(evn.window_id))
+        win32.ShowWindow(window_handle, win32.SW_SHOW)
+
+        utils.push_sp_sc_queue(&global_win32_to_app_queue, Window_Created_Event{evn.window_id})
     }
     else {
         log.error("Failed to create window")
@@ -263,12 +342,15 @@ win32_create_window :: proc(evn: App_Event_Create_Window) {
 
 @(private="file")
 win32_destroy_window :: proc(evn: App_Event_Destroy_Window) {
-    sync.mutex_lock(&global_windows_lock)
-    defer sync.mutex_unlock(&global_windows_lock)
+    handle : win32.HWND
+    {
+        sync.mutex_lock(&global_windows_lock)
+        defer sync.mutex_unlock(&global_windows_lock)
 
-    window_info := utils.get_from_free_list(&global_windows, u32(evn.window_id))
-    win32.DestroyWindow(window_info.handle)
-    utils.remove_from_free_list(&global_windows, u32(evn.window_id))
+        handle = win32_get_window(evn.window_id).handle
+    }
+    win32.DestroyWindow(handle)
+    win32_remove_window(evn.window_id)
 }
 
 win32_translate_key_modifier :: proc() -> bit_set[Modifier] {
@@ -283,6 +365,93 @@ win32_translate_key_modifier :: proc() -> bit_set[Modifier] {
 
 win32_translate_key :: proc(key: u8) -> Key {
     return global_key_map[key] or_else .None
+}
+
+win32_set_window_position :: proc(evn: App_Event_Set_Window_Position) {
+    x, y : i32
+    handle : win32.HWND
+    {
+        sync.mutex_lock(&global_windows_lock)
+        defer sync.mutex_unlock(&global_windows_lock)
+        
+        window_info := win32_get_window(evn.window_id)
+
+        x = evn.x + window_info.border_rect.left
+        y = evn.y + window_info.border_rect.top
+        handle = window_info.handle
+    }
+
+    win32.SetWindowPos(handle, nil, x, y, 0, 0, win32.SWP_NOSIZE | win32.SWP_NOZORDER)
+}
+
+win32_set_window_size :: proc(evn: App_Event_Set_Window_Size) {
+    width, height : i32
+    handle : win32.HWND
+    {
+        sync.mutex_lock(&global_windows_lock)
+        defer sync.mutex_unlock(&global_windows_lock)
+
+        window_info := win32_get_window(evn.window_id)
+
+        width = evn.width + window_info.border_rect.right - window_info.border_rect.left
+        height = evn.height + window_info.border_rect.bottom - window_info.border_rect.top
+        handle = window_info.handle
+    }
+
+    win32.SetWindowPos(handle, nil, 0, 0, width, height, win32.SWP_NOMOVE | win32.SWP_NOZORDER)
+}
+
+win32_set_window_title :: proc(evn: App_Event_Set_Window_Title) {
+    handle : win32.HWND
+    {
+        sync.mutex_lock(&global_windows_lock)
+        defer sync.mutex_unlock(&global_windows_lock)
+
+        handle = win32_get_window(evn.window_id).handle
+    }
+    win32.SetWindowTextW(handle, win32.utf8_to_wstring(evn.title))
+}
+
+win32_set_fullscreen :: proc(evn: App_Event_Set_Window_Fullscreen) {
+    handle : win32.HWND
+    window_style : win32.DWORD
+    window_x : i32
+    window_y : i32
+    window_width : i32
+    window_height : i32
+    {
+        sync.mutex_lock(&global_windows_lock)
+        defer sync.mutex_unlock(&global_windows_lock)
+
+        window_info := win32_get_window(evn.window_id)
+        handle = window_info.handle
+        window_style = window_info.style
+        window_x = window_info.x
+        window_y = window_info.y
+        window_width = window_info.width
+        window_height = window_info.height
+
+        window_x += window_info.border_rect.left
+        window_y += window_info.border_rect.top
+        window_width += window_info.border_rect.right - window_info.border_rect.left
+        window_height += window_info.border_rect.bottom - window_info.border_rect.top
+    
+        window_info.is_fullscreen = evn.fullscreen
+    }
+
+    if evn.fullscreen {
+        rect : win32.RECT
+        win32.GetWindowRect(handle, &rect);
+        //info.top_left.x = rect.left;
+        //info.top_left.y = rect.top;
+        win32.SetWindowLongW(handle, win32.GWL_STYLE, 0);
+        win32.ShowWindow(handle, win32.SW_MAXIMIZE);
+    }
+    else {
+        win32.SetWindowLongW(handle, win32.GWL_STYLE, i32(window_style));
+        win32.SetWindowPos(handle, nil, window_x, window_y, window_width, window_height, 0)
+        win32.ShowWindow(handle, win32.SW_SHOWNORMAL);
+    }
 }
 
 init :: proc() {
@@ -399,10 +568,13 @@ destroy :: proc() {
 }
 
 create_window :: proc(info: Window_Init_Info) -> Window_Id {
-    sync.mutex_lock(&global_windows_lock)
-    defer sync.mutex_unlock(&global_windows_lock)
+    window_id : Window_Id
+    {
+        sync.mutex_lock(&global_windows_lock)
+        defer sync.mutex_unlock(&global_windows_lock)
 
-    window_id := Window_Id(utils.add_to_free_list(&global_windows, Window_Info{}))
+        window_id = win32_add_window(Window_Info{})
+    }
 
     utils.push_sp_sc_queue(&global_app_to_win32_queue, App_Event_Create_Window{window_id, info})
     return window_id
@@ -410,6 +582,22 @@ create_window :: proc(info: Window_Init_Info) -> Window_Id {
 
 destroy_window :: proc(window_id: Window_Id) {
     utils.push_sp_sc_queue(&global_app_to_win32_queue, App_Event_Destroy_Window{window_id})
+}
+
+set_window_position :: proc(window_id: Window_Id, x: i32, y: i32) {
+    utils.push_sp_sc_queue(&global_app_to_win32_queue, App_Event_Set_Window_Position{window_id, x, y})
+}
+
+set_window_size :: proc(window_id: Window_Id, width: i32, height: i32) {
+    utils.push_sp_sc_queue(&global_app_to_win32_queue, App_Event_Set_Window_Size{window_id, width, height})
+}
+
+set_window_title :: proc(window_id: Window_Id, title: string) {
+    utils.push_sp_sc_queue(&global_app_to_win32_queue, App_Event_Set_Window_Title{window_id, title})
+}
+
+set_window_fullscreen :: proc(window_id: Window_Id, fullscreen: bool) {
+    utils.push_sp_sc_queue(&global_app_to_win32_queue, App_Event_Set_Window_Fullscreen{window_id, fullscreen})
 }
 
 poll :: proc() -> (Platform_Event, bool) {
@@ -433,6 +621,14 @@ run :: proc(worker: proc(t: ^thread.Thread)) {
                     win32_create_window(event.(App_Event_Create_Window))
                 case App_Event_Destroy_Window:
                     win32_destroy_window(event.(App_Event_Destroy_Window))
+                case App_Event_Set_Window_Position:
+                    win32_set_window_position(event.(App_Event_Set_Window_Position))
+                case App_Event_Set_Window_Size:
+                    win32_set_window_size(event.(App_Event_Set_Window_Size))
+                case App_Event_Set_Window_Title:
+                    win32_set_window_title(event.(App_Event_Set_Window_Title))
+                case App_Event_Set_Window_Fullscreen:
+                    win32_set_fullscreen(event.(App_Event_Set_Window_Fullscreen))
             }
         }
 
