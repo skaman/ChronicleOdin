@@ -5,106 +5,152 @@ import "core:thread"
 import "core:sync"
 
 import win32 "core:sys/windows"
+import xinput "sys_windows"
 
 import "../utils"
 
+// Window_Info is a structure that holds information about a window.
 @(private="file")
 Window_Info :: struct {
-    handle: win32.HWND,
-    style: win32.DWORD,
-    border_rect: win32.RECT,
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
-    is_fullscreen: bool,
+    handle: win32.HWND,        // The handle to the window.
+    style: win32.DWORD,        // The style of the window.
+    border_rect: win32.RECT,   // The border rectangle of the window.
+    x: i32,                    // The x-coordinate of the window.
+    y: i32,                    // The y-coordinate of the window.
+    width: i32,                // The width of the window.
+    height: i32,               // The height of the window.
+    is_fullscreen: bool,       // Indicates whether the window is fullscreen.
 }
 
+// App_Event_Create_Window is a structure that represents an event to create a window.
 @(private="file")
 App_Event_Create_Window :: struct {
-    window_id: Window_Id,
-    info: Window_Init_Info
+    window_id: Window_Id,      // The identifier of the window to be created.
+    info: Window_Init_Info     // The initialization information for the window.
 }
 
+// App_Event_Destroy_Window is a structure that represents an event to destroy a window.
 @(private="file")
 App_Event_Destroy_Window :: struct {
-    window_id: Window_Id
+    window_id: Window_Id       // The identifier of the window to be destroyed.
 }
 
+// App_Event_Set_Window_Position is a structure that represents an event to set the position of a window.
 @(private="file")
 App_Event_Set_Window_Position :: struct {
-    window_id: Window_Id,
-    x: i32,
-    y: i32,
+    window_id: Window_Id,      // The identifier of the window.
+    x: i32,                    // The new x-coordinate of the window.
+    y: i32                     // The new y-coordinate of the window.
 }
 
+// App_Event_Set_Window_Size is a structure that represents an event to set the size of a window.
 @(private="file")
 App_Event_Set_Window_Size :: struct {
-    window_id: Window_Id,
-    width: i32,
-    height: i32,
+    window_id: Window_Id,      // The identifier of the window.
+    width: i32,                // The new width of the window.
+    height: i32                // The new height of the window.
 }
 
+// App_Event_Set_Window_Title is a structure that represents an event to set the title of a window.
 @(private="file")
 App_Event_Set_Window_Title :: struct {
-    window_id: Window_Id,
-    title: string,
+    window_id: Window_Id,      // The identifier of the window.
+    title: string              // The new title of the window.
 }
 
+
+// App_Event_Set_Window_Fullscreen is a structure that represents an event to set the fullscreen state of a window.
 @(private="file")
 App_Event_Set_Window_Fullscreen :: struct {
-    window_id: Window_Id,
-    fullscreen: bool,
+    window_id: Window_Id,      // The identifier of the window.
+    fullscreen: bool           // Indicates whether the window should be fullscreen.
 }
 
+// App_Event is a union that encapsulates all possible window-related events.
 @(private="file")
 App_Event :: union {
-    App_Event_Create_Window,
-    App_Event_Destroy_Window,
-    App_Event_Set_Window_Position,
-    App_Event_Set_Window_Size,
-    App_Event_Set_Window_Title,
-    App_Event_Set_Window_Fullscreen,
+    App_Event_Create_Window,         // Event to create a window.
+    App_Event_Destroy_Window,        // Event to destroy a window.
+    App_Event_Set_Window_Position,   // Event to set window position.
+    App_Event_Set_Window_Size,       // Event to set window size.
+    App_Event_Set_Window_Title,      // Event to set window title.
+    App_Event_Set_Window_Fullscreen, // Event to set window fullscreen state.
 }
 
+// global_windows is a global variable that holds a free list of Window_Info structures.
 @(private="file")
 global_windows : utils.Free_List(Window_Info)
 
+// global_windows_lock is a global mutex used to synchronize access to the global_windows variable.
 @(private="file")
 global_windows_lock : sync.Mutex
 
+// global_app_to_win32_queue is a global single-producer, single-consumer queue for application-to-Win32 events.
 @(private="file")
 global_app_to_win32_queue : utils.Sp_Sc_Queue(App_Event)
 
+// global_win32_to_app_queue is a global single-producer, single-consumer queue for Win32-to-application events.
 @(private="file")
 global_win32_to_app_queue : utils.Sp_Sc_Queue(Platform_Event)
 
+// global_window_class is a global variable that may hold the window class information.
 @(private="file")
 global_window_class : Maybe(win32.WNDCLASSEXW)
 
+// global_key_map is a global map that translates key codes (u8) to Key enumerations.
 @(private="file")
 global_key_map : map[u8]Key
 
+// global_modifier_map is a global map that translates key codes (u8) to Modifier enumerations.
 @(private="file")
 global_modifier_map : map[u8]Modifier
 
+// global_surrogate is a global variable used to hold surrogate pairs for UTF-16 character encoding.
 @(private="file")
 global_surrogate : win32.WCHAR
 
+// Adds a window to the global list of windows.
+//
+// Parameters:
+//   info: Window_Info - The information of the window to add.
+//
+// Returns:
+//   Window_Id - The identifier of the newly added window.
 @(private="file")
 win32_add_window :: proc(info: Window_Info) -> Window_Id {
     return Window_Id(utils.add_to_free_list(&global_windows, info) + 1)
 }
 
+// Removes a window from the global list of windows.
+//
+// Parameters:
+//   window_id: Window_Id - The identifier of the window to remove.
 win32_remove_window :: proc(window_id: Window_Id) {
     utils.remove_from_free_list(&global_windows, u32(window_id) - 1)
 }
 
+// Retrieves a window from the global list of windows.
+//
+// Parameters:
+//   window_id: Window_Id - The identifier of the window to retrieve.
+//
+// Returns:
+//   ^Window_Info - A pointer to the information of the retrieved window.
 @(private="file")
 win32_get_window :: proc(window_id: Window_Id) -> ^Window_Info {
     return utils.get_from_free_list(&global_windows, u32(window_id) - 1)
 }
 
+// Processes window messages.
+//
+// Parameters:
+//   hWnd: win32.HWND - The handle of the window receiving the message.
+//   Msg: win32.UINT - The message code.
+//   wParam: win32.WPARAM - Additional message information.
+//   lParam: win32.LPARAM - Additional message information.
+//
+// Returns:
+//   win32.LRESULT - The result of the message processing.
 @(private="file")
 win32_window_proc :: proc(hWnd: win32.HWND, Msg: win32.UINT, wParam: win32.WPARAM, lParam: win32.LPARAM) -> win32.LRESULT {
     window_id := Window_Id(win32.GetWindowLongW(hWnd, win32.GWLP_USERDATA))
@@ -259,6 +305,10 @@ win32_window_proc :: proc(hWnd: win32.HWND, Msg: win32.UINT, wParam: win32.WPARA
     return result
 }
 
+// Creates a window based on the provided event information.
+//
+// Parameters:
+//   evn: App_Event_Create_Window - The event containing the window creation information.
 @(private="file")
 win32_create_window :: proc(evn: App_Event_Create_Window) {
     instance := win32.HINSTANCE(win32.GetModuleHandleA(nil))
@@ -308,7 +358,6 @@ win32_create_window :: proc(evn: App_Event_Create_Window) {
         global_window_class.?.lpszClassName,        // lpClassName
         title,                                      // lpWindowName
         style,                                      // dwStyle
-        //win32.WS_POPUP | win32.WS_SYSMENU,
         x,                                          // x
         y,                                          // y
         width,                                      // width
@@ -344,6 +393,10 @@ win32_create_window :: proc(evn: App_Event_Create_Window) {
     }
 }
 
+// Destroys a window based on the provided event information.
+//
+// Parameters:
+//   evn: App_Event_Destroy_Window - The event containing the window destruction information.
 @(private="file")
 win32_destroy_window :: proc(evn: App_Event_Destroy_Window) {
     handle : win32.HWND
@@ -357,6 +410,11 @@ win32_destroy_window :: proc(evn: App_Event_Destroy_Window) {
     win32_remove_window(evn.window_id)
 }
 
+// Translates key modifiers.
+//
+// Returns:
+//   bit_set[Modifier] - The set of active key modifiers.
+@(private="file")
 win32_translate_key_modifier :: proc() -> bit_set[Modifier] {
     result : bit_set[Modifier] = {}
     for key, modifier in global_modifier_map {
@@ -367,10 +425,23 @@ win32_translate_key_modifier :: proc() -> bit_set[Modifier] {
     return result
 }
 
+// Translates a key code to a Key enumeration.
+//
+// Parameters:
+//   key: u8 - The key code to translate.
+//
+// Returns:
+//   Key - The translated key.
+@(private="file")
 win32_translate_key :: proc(key: u8) -> Key {
     return global_key_map[key] or_else .None
 }
 
+// Sets the position of a window.
+//
+// Parameters:
+//   evn: App_Event_Set_Window_Position - The event containing the new window position information.
+@(private="file")
 win32_set_window_position :: proc(evn: App_Event_Set_Window_Position) {
     x, y : i32
     handle : win32.HWND
@@ -388,6 +459,11 @@ win32_set_window_position :: proc(evn: App_Event_Set_Window_Position) {
     win32.SetWindowPos(handle, nil, x, y, 0, 0, win32.SWP_NOSIZE | win32.SWP_NOZORDER)
 }
 
+// Sets the size of a window.
+//
+// Parameters:
+//   evn: App_Event_Set_Window_Size - The event containing the new window size information.
+@(private="file")
 win32_set_window_size :: proc(evn: App_Event_Set_Window_Size) {
     width, height : i32
     handle : win32.HWND
@@ -405,6 +481,11 @@ win32_set_window_size :: proc(evn: App_Event_Set_Window_Size) {
     win32.SetWindowPos(handle, nil, 0, 0, width, height, win32.SWP_NOMOVE | win32.SWP_NOZORDER)
 }
 
+// Sets the title of a window.
+//
+// Parameters:
+//   evn: App_Event_Set_Window_Title - The event containing the new window title information.
+@(private="file")
 win32_set_window_title :: proc(evn: App_Event_Set_Window_Title) {
     handle : win32.HWND
     {
@@ -416,6 +497,11 @@ win32_set_window_title :: proc(evn: App_Event_Set_Window_Title) {
     win32.SetWindowTextW(handle, win32.utf8_to_wstring(evn.title))
 }
 
+// Sets the fullscreen state of a window.
+//
+// Parameters:
+//   evn: App_Event_Set_Window_Fullscreen - The event containing the new fullscreen state information.
+@(private="file")
 win32_set_fullscreen :: proc(evn: App_Event_Set_Window_Fullscreen) {
     handle : win32.HWND
     window_style : win32.DWORD
@@ -446,8 +532,6 @@ win32_set_fullscreen :: proc(evn: App_Event_Set_Window_Fullscreen) {
     if evn.fullscreen {
         rect : win32.RECT
         win32.GetWindowRect(handle, &rect);
-        //info.top_left.x = rect.left;
-        //info.top_left.y = rect.top;
         win32.SetWindowLongW(handle, win32.GWL_STYLE, 0);
         win32.ShowWindow(handle, win32.SW_MAXIMIZE);
     }
@@ -458,11 +542,183 @@ win32_set_fullscreen :: proc(evn: App_Event_Set_Window_Fullscreen) {
     }
 }
 
+// Gamepad_State is a structure that holds the connection status and state of a gamepad.
+Gamepad_State :: struct {
+    is_connected: bool,                // Indicates whether the gamepad is connected.
+    state: xinput.XINPUT_STATE,        // The state of the gamepad.
+}
+
+// Gamepad_Axis_State is a structure that holds the configuration for a gamepad axis.
+Gamepad_Axis_State :: struct {
+    deadzone: i32,                     // The deadzone threshold for the axis.
+    flip: i8,                          // The flip factor for the axis (1 or -1).
+}
+
+// MAX_GAMEPADS defines the maximum number of supported gamepads.
+MAX_GAMEPADS :: 4
+
+// global_gamepads is a global array that holds the state of all connected gamepads.
+global_gamepads: [MAX_GAMEPADS]Gamepad_State
+
+// global_gamepad_axis_states is a global array that holds the axis states for each gamepad axis.
+global_gamepad_axis_states: [len(Gamepad_Axis)]Gamepad_Axis_State
+
+// global_gamepad_button_map is a global array that maps gamepad buttons to XInput button bits.
+global_gamepad_button_map: [len(Gamepad_Button)]xinput.XINPUT_GAMEPAD_BUTTON_BIT
+
+// Filters and updates the value of a gamepad axis based on the deadzone and flip settings.
+//
+// Parameters:
+//   axis: Gamepad_Axis - The axis to filter.
+//   old: i32 - The previous value of the axis.
+//   value: ^i32 - A pointer to the new value of the axis.
+//
+// Returns:
+//   bool - True if the value has changed, otherwise false.
+xinput_filter_axis :: proc(axis: Gamepad_Axis, old: i32, value: ^i32) -> bool {
+    axis_state := global_gamepad_axis_states[axis]
+    deadzone := axis_state.deadzone
+    value^ = value^ > deadzone || value^ < -deadzone ? value^ : 0
+    value^ = value^ * i32(axis_state.flip);
+    return old != value^;
+}
+
+// Polls the state of all gamepads and generates events for any changes.
+xinput_poll_gamepads :: proc() {
+    for i in 0..<MAX_GAMEPADS {
+        gamepad := &global_gamepads[i]
+        
+        state : xinput.XINPUT_STATE
+        result := xinput.XInputGetState(xinput.XUSER(i), &state)
+        is_connected := result == win32.System_Error.SUCCESS
+
+        if gamepad.is_connected != is_connected {
+            gamepad.is_connected = is_connected
+            event := Gamepad_Event{
+                Gamepad_Id(i),
+                is_connected,
+            }
+            utils.push_sp_sc_queue(&global_win32_to_app_queue, event)
+        }
+
+        if is_connected && gamepad.state.dwPacketNumber != state.dwPacketNumber {
+            changed := gamepad.state.Gamepad.wButtons ~ state.Gamepad.wButtons
+            current := gamepad.state.Gamepad.wButtons;
+            if (gamepad.state.Gamepad.wButtons != state.Gamepad.wButtons)
+            {
+                for button in Gamepad_Button {
+                    bit := global_gamepad_button_map[button]
+                    if bit in changed {
+                        event := Gamepad_Button_Event{
+                            Gamepad_Id(i),
+                            button,
+                            bit in current,
+                        }
+                        utils.push_sp_sc_queue(&global_win32_to_app_queue, event)
+                    }
+                }
+            }
+
+            if (gamepad.state.Gamepad.bLeftTrigger != state.Gamepad.bLeftTrigger)
+            {
+                value := i32(state.Gamepad.bLeftTrigger)
+                if xinput_filter_axis(Gamepad_Axis.Left_Trigger, i32(gamepad.state.Gamepad.bLeftTrigger), &value) {
+                    event := Gamepad_Axis_Event{
+                        Gamepad_Id(i),
+                        Gamepad_Axis.Left_Trigger,
+                        f32(value) / 255,
+                    }
+                    utils.push_sp_sc_queue(&global_win32_to_app_queue, event)
+                }
+
+                gamepad.state.Gamepad.bLeftTrigger = state.Gamepad.bLeftTrigger
+            }
+
+            if (gamepad.state.Gamepad.bRightTrigger != state.Gamepad.bRightTrigger)
+            {
+                value := i32(state.Gamepad.bRightTrigger)
+                if xinput_filter_axis(Gamepad_Axis.Right_Trigger, i32(gamepad.state.Gamepad.bRightTrigger), &value) {
+                    event := Gamepad_Axis_Event{
+                        Gamepad_Id(i),
+                        Gamepad_Axis.Right_Trigger,
+                        f32(value) / 255,
+                    }
+                    utils.push_sp_sc_queue(&global_win32_to_app_queue, event)
+                }
+
+                gamepad.state.Gamepad.bRightTrigger = state.Gamepad.bRightTrigger
+            }
+
+            if (gamepad.state.Gamepad.sThumbLX != state.Gamepad.sThumbLX)
+            {
+                value := i32(state.Gamepad.sThumbLX)
+                if xinput_filter_axis(Gamepad_Axis.Left_Thumb_X, i32(gamepad.state.Gamepad.sThumbLX), &value) {
+                    event := Gamepad_Axis_Event{
+                        Gamepad_Id(i),
+                        Gamepad_Axis.Left_Thumb_X,
+                        f32(value) / 32767,
+                    }
+                    utils.push_sp_sc_queue(&global_win32_to_app_queue, event)
+                }
+
+                gamepad.state.Gamepad.sThumbLX = state.Gamepad.sThumbLX
+            }
+
+            if (gamepad.state.Gamepad.sThumbLY != state.Gamepad.sThumbLY)
+            {
+                value := i32(state.Gamepad.sThumbLY)
+                if xinput_filter_axis(Gamepad_Axis.Left_Thumb_Y, i32(gamepad.state.Gamepad.sThumbLY), &value) {
+                    event := Gamepad_Axis_Event{
+                        Gamepad_Id(i),
+                        Gamepad_Axis.Left_Thumb_Y,
+                        f32(value) / 32767,
+                    }
+                    utils.push_sp_sc_queue(&global_win32_to_app_queue, event)
+                }
+
+                gamepad.state.Gamepad.sThumbLY = state.Gamepad.sThumbLY
+            }
+
+            if (gamepad.state.Gamepad.sThumbRX != state.Gamepad.sThumbRX)
+            {
+                value := i32(state.Gamepad.sThumbRX)
+                if xinput_filter_axis(Gamepad_Axis.Right_Thumb_X, i32(gamepad.state.Gamepad.sThumbRX), &value) {
+                    event := Gamepad_Axis_Event{
+                        Gamepad_Id(i),
+                        Gamepad_Axis.Right_Thumb_X,
+                        f32(value) / 32767,
+                    }
+                    utils.push_sp_sc_queue(&global_win32_to_app_queue, event)
+                }
+
+                gamepad.state.Gamepad.sThumbRX = state.Gamepad.sThumbRX
+            }
+
+            if (gamepad.state.Gamepad.sThumbRY != state.Gamepad.sThumbRY)
+            {
+                value := i32(state.Gamepad.sThumbRY)
+                if xinput_filter_axis(Gamepad_Axis.Right_Thumb_Y, i32(gamepad.state.Gamepad.sThumbRY), &value) {
+                    event := Gamepad_Axis_Event{
+                        Gamepad_Id(i),
+                        Gamepad_Axis.Right_Thumb_Y,
+                        f32(value) / 32767,
+                    }
+                    utils.push_sp_sc_queue(&global_win32_to_app_queue, event)
+                }
+
+                gamepad.state.Gamepad.sThumbRY = state.Gamepad.sThumbRY
+            }
+        }
+    }
+}
+
+// Initializes the platform module.
 init :: proc() {
     utils.init_free_list(&global_windows, 10)
     utils.init_sp_sc_queue(&global_app_to_win32_queue)
     utils.init_sp_sc_queue(&global_win32_to_app_queue)
 
+    // Initialize the global key map
     global_key_map = make(map[u8]Key)
     global_key_map[win32.VK_ESCAPE]     = .Esc
     global_key_map[win32.VK_RETURN]     = .Return;
@@ -551,6 +807,7 @@ init :: proc() {
     global_key_map[u8('Y')]             = .Key_Y;
     global_key_map[u8('Z')]             = .Key_Z;
 
+    // Initialize the global modifier map
     global_modifier_map = make(map[u8]Modifier)
     global_modifier_map[win32.VK_LMENU]    = .Left_Alt
     global_modifier_map[win32.VK_RMENU]    = .Right_Alt
@@ -560,8 +817,39 @@ init :: proc() {
     global_modifier_map[win32.VK_RSHIFT]   = .Right_Shift
     global_modifier_map[win32.VK_LWIN]     = .Left_Meta
     global_modifier_map[win32.VK_RWIN]     = .Right_Meta
+
+    // Initialize the global gamepad axis states
+    global_gamepad_axis_states[Gamepad_Axis.Left_Thumb_X].deadzone  = i32(xinput.XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
+    global_gamepad_axis_states[Gamepad_Axis.Left_Thumb_X].flip      = 1
+    global_gamepad_axis_states[Gamepad_Axis.Left_Thumb_Y].deadzone  = i32(xinput.XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
+    global_gamepad_axis_states[Gamepad_Axis.Left_Thumb_Y].flip      = -1
+    global_gamepad_axis_states[Gamepad_Axis.Right_Thumb_X].deadzone = i32(xinput.XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE)
+    global_gamepad_axis_states[Gamepad_Axis.Right_Thumb_X].flip     = 1
+    global_gamepad_axis_states[Gamepad_Axis.Right_Thumb_Y].deadzone = i32(xinput.XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE)
+    global_gamepad_axis_states[Gamepad_Axis.Right_Thumb_Y].flip     = -1
+    global_gamepad_axis_states[Gamepad_Axis.Left_Trigger].deadzone  = i32(xinput.XINPUT_GAMEPAD_TRIGGER_THRESHOLD)
+    global_gamepad_axis_states[Gamepad_Axis.Left_Trigger].flip      = 1
+    global_gamepad_axis_states[Gamepad_Axis.Right_Trigger].deadzone = i32(xinput.XINPUT_GAMEPAD_TRIGGER_THRESHOLD)
+    global_gamepad_axis_states[Gamepad_Axis.Right_Trigger].flip     = 1
+
+    // Initialize the global gamepad button map
+    global_gamepad_button_map[Gamepad_Button.Up]             = xinput.XINPUT_GAMEPAD_BUTTON_BIT.DPAD_UP
+    global_gamepad_button_map[Gamepad_Button.Down]           = xinput.XINPUT_GAMEPAD_BUTTON_BIT.DPAD_DOWN
+    global_gamepad_button_map[Gamepad_Button.Left]           = xinput.XINPUT_GAMEPAD_BUTTON_BIT.DPAD_LEFT
+    global_gamepad_button_map[Gamepad_Button.Right]          = xinput.XINPUT_GAMEPAD_BUTTON_BIT.DPAD_RIGHT
+    global_gamepad_button_map[Gamepad_Button.Start]          = xinput.XINPUT_GAMEPAD_BUTTON_BIT.START
+    global_gamepad_button_map[Gamepad_Button.Back]           = xinput.XINPUT_GAMEPAD_BUTTON_BIT.BACK
+    global_gamepad_button_map[Gamepad_Button.Left_Thumb]     = xinput.XINPUT_GAMEPAD_BUTTON_BIT.LEFT_THUMB
+    global_gamepad_button_map[Gamepad_Button.Right_Thumb]    = xinput.XINPUT_GAMEPAD_BUTTON_BIT.RIGHT_THUMB
+    global_gamepad_button_map[Gamepad_Button.Left_Shoulder]  = xinput.XINPUT_GAMEPAD_BUTTON_BIT.LEFT_SHOULDER
+    global_gamepad_button_map[Gamepad_Button.Right_Shoulder] = xinput.XINPUT_GAMEPAD_BUTTON_BIT.RIGHT_SHOULDER
+    global_gamepad_button_map[Gamepad_Button.A]              = xinput.XINPUT_GAMEPAD_BUTTON_BIT.A
+    global_gamepad_button_map[Gamepad_Button.B]              = xinput.XINPUT_GAMEPAD_BUTTON_BIT.B
+    global_gamepad_button_map[Gamepad_Button.X]              = xinput.XINPUT_GAMEPAD_BUTTON_BIT.X
+    global_gamepad_button_map[Gamepad_Button.Y]              = xinput.XINPUT_GAMEPAD_BUTTON_BIT.Y
 }
 
+// Destroys the platform module.
 destroy :: proc() {
     delete(global_modifier_map)
     delete(global_key_map)
@@ -571,6 +859,13 @@ destroy :: proc() {
     utils.destroy_free_list(&global_windows)
 }
 
+// Creates a window.
+//
+// Parameters:
+//   info: Window_Init_Info - The initialization information for the window.
+//
+// Returns:
+//   Window_Id - The identifier of the newly created window.
 create_window :: proc(info: Window_Init_Info) -> Window_Id {
     window_id : Window_Id
     {
@@ -584,30 +879,64 @@ create_window :: proc(info: Window_Init_Info) -> Window_Id {
     return window_id
 }
 
+// Destroys a window.
+//
+// Parameters:
+//   window_id: Window_Id - The identifier of the window to destroy.
 destroy_window :: proc(window_id: Window_Id) {
     utils.push_sp_sc_queue(&global_app_to_win32_queue, App_Event_Destroy_Window{window_id})
 }
 
+// Sets the position of a window.
+//
+// Parameters:
+//   window_id: Window_Id - The identifier of the window to move.
+//   x: i32 - The new x-coordinate of the window.
+//   y: i32 - The new y-coordinate of the window.
 set_window_position :: proc(window_id: Window_Id, x: i32, y: i32) {
     utils.push_sp_sc_queue(&global_app_to_win32_queue, App_Event_Set_Window_Position{window_id, x, y})
 }
 
+// Sets the size of a window.
+//
+// Parameters:
+//   window_id: Window_Id - The identifier of the window to resize.
+//   width: i32 - The new width of the window.
+//   height: i32 - The new height of the window.
 set_window_size :: proc(window_id: Window_Id, width: i32, height: i32) {
     utils.push_sp_sc_queue(&global_app_to_win32_queue, App_Event_Set_Window_Size{window_id, width, height})
 }
 
+// Sets the title of a window.
+//
+// Parameters:
+//   window_id: Window_Id - The identifier of the window to rename.
+//   title: string - The new title of the window.
 set_window_title :: proc(window_id: Window_Id, title: string) {
     utils.push_sp_sc_queue(&global_app_to_win32_queue, App_Event_Set_Window_Title{window_id, title})
 }
 
+// Sets the fullscreen state of a window.
+//
+// Parameters:
+//   window_id: Window_Id - The identifier of the window to modify.
+//   fullscreen: bool - Indicates whether the window should be fullscreen.
 set_window_fullscreen :: proc(window_id: Window_Id, fullscreen: bool) {
     utils.push_sp_sc_queue(&global_app_to_win32_queue, App_Event_Set_Window_Fullscreen{window_id, fullscreen})
 }
 
+// Polls for platform events.
+//
+// Returns:
+//   (Platform_Event, bool) - A tuple containing the event and a boolean indicating success.
 poll :: proc() -> (Platform_Event, bool) {
     return utils.peek_sp_sc_queue(&global_win32_to_app_queue)
 }
 
+// Runs the main event loop.
+//
+// Parameters:
+//   worker: proc(t: ^thread.Thread) - The worker procedure to run in the thread.
 run :: proc(worker: proc(t: ^thread.Thread)) {
     t := thread.create(worker)
     if t == nil {
@@ -641,6 +970,8 @@ run :: proc(worker: proc(t: ^thread.Thread)) {
             win32.TranslateMessage(&message)
             win32.DispatchMessageW(&message)
         }
+
+        xinput_poll_gamepads()
 
         thread.yield()
     }

@@ -65,6 +65,15 @@ worker :: proc(t: ^thread.Thread) {
                 case platform.Mouse_Event:
                     mouse_event := event.(platform.Mouse_Event)
                     //log.infof("Mouse event: %v", mouse_event)
+                case platform.Gamepad_Event:
+                    gamepad_event := event.(platform.Gamepad_Event)
+                    log.infof("Gamepad event: %v", gamepad_event)
+                case platform.Gamepad_Button_Event:
+                    gamepad_button_event := event.(platform.Gamepad_Button_Event)
+                    log.infof("Gamepad button event: %v", gamepad_button_event)
+                case platform.Gamepad_Axis_Event:
+                    gamepad_axis_event := event.(platform.Gamepad_Axis_Event)
+                    log.infof("Gamepad axis event: %v", gamepad_axis_event)
             }
         }
 

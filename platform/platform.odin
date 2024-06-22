@@ -1,73 +1,108 @@
 package platform
 
 Window_Id :: distinct u32
+Gamepad_Id :: distinct u32
 
+// Structure to hold information needed to initialize a window
 Window_Init_Info :: struct {
-    title: string,
-    x: Maybe(i32),
-    y: Maybe(i32),
-    width: Maybe(i32),
-    height: Maybe(i32),
+    title: string,       // The title of the window
+    x: Maybe(i32),       // The x-coordinate for the window position (optional)
+    y: Maybe(i32),       // The y-coordinate for the window position (optional)
+    width: Maybe(i32),   // The width of the window (optional)
+    height: Maybe(i32),  // The height of the window (optional)
 }
 
+// Structure for the event when a window is created
 Window_Created_Event :: struct {
-    window_id: Window_Id,
+    window_id: Window_Id, // The identifier for the created window
 }
 
+// Structure for the event when a window is destroyed
 Window_Destroyed_Event :: struct {
-    window_id: Window_Id,
+    window_id: Window_Id, // The identifier for the destroyed window
 }
 
+// Structure for the event when a window is moved
 Window_Move_Event :: struct {
-    window_id: Window_Id,
-    x: i32,
-    y: i32,
+    window_id: Window_Id, // The identifier for the moved window
+    x: i32,               // The new x-coordinate of the window
+    y: i32,               // The new y-coordinate of the window
 }
 
+// Structure for the event when a window is resized
 Window_Resized_Event :: struct {
-    window_id: Window_Id,
-    width: i32,
-    height: i32,
-    is_fullscreen: bool,
+    window_id: Window_Id, // The identifier for the resized window
+    width: i32,           // The new width of the window
+    height: i32,          // The new height of the window
+    is_fullscreen: bool,  // Whether the window is in fullscreen mode
 }
 
+// Structure for the event when a window close is requested
 Window_Close_Requested_Event :: struct {
-    window_id: Window_Id,
+    window_id: Window_Id, // The identifier for the window requested to close
 }
 
+// Structure for keyboard events
 Key_Event :: struct {
-    window_id: Window_Id,
-    key: Key,
-    modifier: bit_set[Modifier],
-    pressed: bool,
+    window_id: Window_Id,        // The identifier for the window receiving the key event
+    key: Key,                    // The key involved in the event
+    modifier: bit_set[Modifier], // The modifiers (like Ctrl, Alt) active during the event
+    pressed: bool,               // Whether the key was pressed (true) or released (false)
 }
 
+// Structure for character input events
 Char_Event :: struct {
-    window_id: Window_Id,
-    character: rune,
+    window_id: Window_Id, // The identifier for the window receiving the character input
+    character: rune,      // The character input
 }
 
+// Structure for mouse events
 Mouse_Event :: struct {
-    window_id: Window_Id,
-    x: i32,
-    y: i32,
-    z: i32,
-    button: Mouse_Button,
-    pressed: bool,
-    is_moving: bool,
+    window_id: Window_Id, // The identifier for the window receiving the mouse event
+    x: i32,               // The x-coordinate of the mouse position
+    y: i32,               // The y-coordinate of the mouse position
+    z: i32,               // The z-coordinate or scroll value of the mouse (optional, usually for scrolling)
+    button: Mouse_Button, // The mouse button involved in the event
+    pressed: bool,        // Whether the button was pressed (true) or released (false)
+    is_moving: bool,      // Whether the mouse is moving (true) or not (false)
 }
 
+// Structure for gamepad connection events
+Gamepad_Event :: struct {
+    gamepad_id: Gamepad_Id, // The identifier for the connected gamepad
+    is_connected: bool,     // Whether the gamepad is connected (true) or disconnected (false)
+}
+
+// Structure for gamepad axis events
+Gamepad_Axis_Event :: struct {
+    gamepad_id: Gamepad_Id, // The identifier for the gamepad
+    axis: Gamepad_Axis,     // The axis involved in the event
+    value: f32,             // The value of the axis
+}
+
+// Structure for gamepad button events
+Gamepad_Button_Event :: struct {
+    gamepad_id: Gamepad_Id, // The identifier for the gamepad
+    button: Gamepad_Button, // The button involved in the event
+    pressed: bool,          // Whether the button was pressed (true) or released (false)
+}
+
+// Union of all possible platform events
 Platform_Event :: union {
-    Window_Created_Event,
-    Window_Destroyed_Event,
-    Window_Close_Requested_Event,
-    Window_Move_Event,
-    Window_Resized_Event,
-    Key_Event,
-    Char_Event,
-    Mouse_Event,
+    Window_Created_Event,          // Event for window creation
+    Window_Destroyed_Event,        // Event for window destruction
+    Window_Close_Requested_Event,  // Event for window close request
+    Window_Move_Event,             // Event for window move
+    Window_Resized_Event,          // Event for window resize
+    Key_Event,                     // Event for key actions
+    Char_Event,                    // Event for character input
+    Mouse_Event,                   // Event for mouse actions
+    Gamepad_Event,                 // Event for gamepad connection
+    Gamepad_Axis_Event,            // Event for gamepad axis
+    Gamepad_Button_Event,          // Event for gamepad button
 }
 
+// Enumeration of possible keys
 Key :: enum {
     None,
     Esc,
@@ -157,6 +192,7 @@ Key :: enum {
     Key_Z
 }
 
+// Enumeration of possible key modifiers
 Modifier :: enum {
     None,
     Left_Alt,
@@ -169,9 +205,38 @@ Modifier :: enum {
     Right_Meta,
 }
 
+// Enumeration of possible mouse buttons
 Mouse_Button :: enum {
     None,
     Left,
     Middle,
     Right
+}
+
+// Enumeration of possible gamepad analogic axis
+Gamepad_Axis :: enum {
+    Left_Thumb_X,
+    Left_Thumb_Y,
+    Right_Thumb_X,
+    Right_Thumb_Y,
+    Left_Trigger,
+    Right_Trigger,
+}
+
+// Enumeration of possible gamepad buttons
+Gamepad_Button :: enum {
+    Up,
+    Down,
+    Left,
+    Right,
+    Start,
+    Back,
+    Left_Thumb,
+    Right_Thumb,
+    Left_Shoulder,
+    Right_Shoulder,
+    A,
+    B,
+    X,
+    Y,
 }
