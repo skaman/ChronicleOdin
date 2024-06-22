@@ -124,9 +124,11 @@ win32_window_proc :: proc(hWnd: win32.HWND, Msg: win32.UINT, wParam: win32.WPARA
                     window_info.y = i32(y)
                 }
             }
+            utils.push_sp_sc_queue(&global_win32_to_app_queue, Window_Move_Event{window_id, i32(x), i32(y)})
         case win32.WM_SIZE:
             width := win32.LOWORD(u32(lParam))
             height := win32.HIWORD(u32(lParam))
+            is_fullscreen : bool
             {
                 sync.mutex_lock(&global_windows_lock)
                 defer sync.mutex_unlock(&global_windows_lock)
@@ -136,8 +138,10 @@ win32_window_proc :: proc(hWnd: win32.HWND, Msg: win32.UINT, wParam: win32.WPARA
                     window_info.width = i32(width)
                     window_info.height = i32(height)
                 }
+
+                is_fullscreen = window_info.is_fullscreen
             }
-            utils.push_sp_sc_queue(&global_win32_to_app_queue, Window_Resized_Event{window_id, i32(width), i32(height)})
+            utils.push_sp_sc_queue(&global_win32_to_app_queue, Window_Resized_Event{window_id, i32(width), i32(height), is_fullscreen})
         case win32.WM_CLOSE, win32.WM_QUIT:
             utils.push_sp_sc_queue(&global_win32_to_app_queue, Window_Close_Requested_Event{window_id})
         case win32.WM_DESTROY:
