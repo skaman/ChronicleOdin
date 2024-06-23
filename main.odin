@@ -6,6 +6,7 @@ import "core:thread"
 
 import "ecs"
 import "platform"
+import "renderer"
 
 
 worker :: proc(t: ^thread.Thread) {
@@ -94,25 +95,35 @@ worker :: proc(t: ^thread.Thread) {
 }
 
 main :: proc() {
-    default_allocator := context.allocator
-    tracking_allocator: mem.Tracking_Allocator
-    mem.tracking_allocator_init(&tracking_allocator, default_allocator)
-
 	context.logger = log.create_console_logger()
-    context.allocator = mem.tracking_allocator(&tracking_allocator)
+
+    tracking_allocator: mem.Tracking_Allocator
+    when ODIN_DEBUG {
+        default_allocator := context.allocator
+        mem.tracking_allocator_init(&tracking_allocator, default_allocator)
+    
+        context.allocator = mem.tracking_allocator(&tracking_allocator)
+    }
 
     platform.init()
     ecs.init()
+    if !renderer.init(.Vulkan, "Chronicle") {
+        log.error("Failed to initialize renderer")
+        return
+    }
 
     platform.run(worker)
 
+    renderer.destroy()
 	ecs.destroy()
     platform.destroy()
 
     free_all(context.temp_allocator)
 
-    for _, value in tracking_allocator.allocation_map {
-        log.errorf("%v: Leaked %v bytes", value.location, value.size)
+    when ODIN_DEBUG {
+        for _, value in tracking_allocator.allocation_map {
+            log.errorf("%v: Leaked %v bytes", value.location, value.size)
+        }
     }
 	log.info("END OF PROGRAM")
 }

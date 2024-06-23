@@ -3,6 +3,7 @@ package platform
 import "core:log"
 import "core:thread"
 import "core:sync"
+import "core:strings"
 
 import win32 "core:sys/windows"
 import xinput "sys_windows"
@@ -931,6 +932,14 @@ set_window_fullscreen :: proc(window_id: Window_Id, fullscreen: bool) {
 //   (Platform_Event, bool) - A tuple containing the event and a boolean indicating success.
 poll :: proc() -> (Platform_Event, bool) {
     return utils.peek_sp_sc_queue(&global_win32_to_app_queue)
+}
+
+load_module :: proc(path: string) -> rawptr {
+    return win32.LoadLibraryW(win32.utf8_to_wstring(path))
+}
+
+get_module_symbol :: proc(module: rawptr, name: string) -> rawptr {
+    return win32.GetProcAddress(win32.HMODULE(module), strings.unsafe_string_to_cstring(name))
 }
 
 // Runs the main event loop.
