@@ -3,6 +3,9 @@ package platform
 Window_Id :: distinct u32
 Gamepad_Id :: distinct u32
 
+Instance :: distinct rawptr
+Handle :: distinct rawptr
+
 // Structure to hold information needed to initialize a window
 Window_Init_Info :: struct {
     title: string,       // The title of the window
@@ -14,7 +17,9 @@ Window_Init_Info :: struct {
 
 // Structure for the event when a window is created
 Window_Created_Event :: struct {
-    window_id: Window_Id, // The identifier for the created window
+    window_id: Window_Id,   // The identifier for the created window
+    handle: Handle,         // The handle for the created window
+    instance: Instance,     // The instance for the created window
 }
 
 // Structure for the event when a window is destroyed

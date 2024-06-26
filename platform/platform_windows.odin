@@ -78,6 +78,9 @@ App_Event :: union {
     App_Event_Set_Window_Fullscreen, // Event to set window fullscreen state.
 }
 
+@(private="file")
+global_instance : win32.HINSTANCE
+
 // global_windows is a global variable that holds a free list of Window_Info structures.
 @(private="file")
 global_windows : utils.Free_List(Window_Info)
@@ -312,30 +315,6 @@ win32_window_proc :: proc(hWnd: win32.HWND, Msg: win32.UINT, wParam: win32.WPARA
 //   evn: App_Event_Create_Window - The event containing the window creation information.
 @(private="file")
 win32_create_window :: proc(evn: App_Event_Create_Window) {
-    instance := win32.HINSTANCE(win32.GetModuleHandleA(nil))
-
-    if global_window_class == nil {
-        global_window_class = win32.WNDCLASSEXW {
-            size_of(win32.WNDCLASSEXW),                  // cbSize
-            win32.CS_HREDRAW | win32.CS_VREDRAW,         // style
-            win32.WNDPROC(win32_window_proc),            // lpfnWndProc
-            0,                                           // cbClsExtra
-            0,                                           // cbWndExtra
-            instance,                                    // hInstance
-            win32.LoadIconA(nil, win32.IDI_APPLICATION), // hIcon
-            win32.LoadCursorA(nil, win32.IDC_ARROW),     // hCursor
-            win32.CreateSolidBrush(0xFF303030),          // hbrBackground
-            nil,                                         // lpszMenuName
-            win32.L("ChronicleWindowClass"),             // lpszClassName
-            win32.LoadIconA(nil, win32.IDI_APPLICATION), // hIconSm
-        }
-
-        if win32.RegisterClassExW(&global_window_class.?) == 0 {
-            log.error("Failed to register window class")
-            return
-        }
-    }
-
     info := evn.info
     x := info.x.? or_else win32.CW_USEDEFAULT
     y := info.y.? or_else win32.CW_USEDEFAULT
@@ -365,7 +344,7 @@ win32_create_window :: proc(evn: App_Event_Create_Window) {
         height,                                     // height
         nil,                                        // hWndParent
         nil,                                        // hMenu
-        instance,                                   // hInstance
+        global_instance,                            // hInstance
         rawptr(uintptr(evn.window_id)),             // lpParam
     )
 
@@ -387,7 +366,7 @@ win32_create_window :: proc(evn: App_Event_Create_Window) {
         win32.SetWindowLongW(window_handle, win32.GWLP_USERDATA, i32(evn.window_id))
         win32.ShowWindow(window_handle, win32.SW_SHOW)
 
-        utils.push_sp_sc_queue(&global_win32_to_app_queue, Window_Created_Event{evn.window_id})
+        utils.push_sp_sc_queue(&global_win32_to_app_queue, Window_Created_Event{evn.window_id, Handle(window_handle), Instance(global_instance)})
     }
     else {
         log.error("Failed to create window")
@@ -714,7 +693,7 @@ xinput_poll_gamepads :: proc() {
 }
 
 // Initializes the platform module.
-init :: proc() {
+init :: proc() -> bool {
     utils.init_free_list(&global_windows, 10)
     utils.init_sp_sc_queue(&global_app_to_win32_queue)
     utils.init_sp_sc_queue(&global_win32_to_app_queue)
@@ -848,6 +827,31 @@ init :: proc() {
     global_gamepad_button_map[Gamepad_Button.B]              = xinput.XINPUT_GAMEPAD_BUTTON_BIT.B
     global_gamepad_button_map[Gamepad_Button.X]              = xinput.XINPUT_GAMEPAD_BUTTON_BIT.X
     global_gamepad_button_map[Gamepad_Button.Y]              = xinput.XINPUT_GAMEPAD_BUTTON_BIT.Y
+
+    // Initialize Win32 window class
+    global_instance := win32.HINSTANCE(win32.GetModuleHandleA(nil))
+
+    global_window_class = win32.WNDCLASSEXW {
+        size_of(win32.WNDCLASSEXW),                  // cbSize
+        win32.CS_HREDRAW | win32.CS_VREDRAW,         // style
+        win32.WNDPROC(win32_window_proc),            // lpfnWndProc
+        0,                                           // cbClsExtra
+        0,                                           // cbWndExtra
+        global_instance,                             // hInstance
+        win32.LoadIconA(nil, win32.IDI_APPLICATION), // hIcon
+        win32.LoadCursorA(nil, win32.IDC_ARROW),     // hCursor
+        win32.CreateSolidBrush(0xFF303030),          // hbrBackground
+        nil,                                         // lpszMenuName
+        win32.L("ChronicleWindowClass"),             // lpszClassName
+        win32.LoadIconA(nil, win32.IDI_APPLICATION), // hIconSm
+    }
+
+    if win32.RegisterClassExW(&global_window_class.?) == 0 {
+        log.error("Failed to register window class")
+        return false
+    }
+
+    return true
 }
 
 // Destroys the platform module.

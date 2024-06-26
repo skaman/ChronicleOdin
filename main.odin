@@ -13,6 +13,9 @@ worker :: proc(t: ^thread.Thread) {
     window_ids := make(map[platform.Window_Id]bool)
     defer delete(window_ids)
 
+    window_contexts := make(map[platform.Window_Id]renderer.Window_Context_Id)
+    defer delete(window_contexts)
+
     window_fullscreen := make(map[platform.Window_Id]bool)
     defer delete(window_fullscreen)
 
@@ -34,9 +37,14 @@ worker :: proc(t: ^thread.Thread) {
                 case platform.Window_Created_Event:
                     window_created_event := event.(platform.Window_Created_Event)
                     log.infof("Window created: %v", window_created_event)
+                    window_context_id, _ := renderer.init_window(window_created_event.instance, window_created_event.handle)
+                    window_contexts[window_created_event.window_id] = window_context_id
                 case platform.Window_Destroyed_Event:
                     window_destroyed_event := event.(platform.Window_Destroyed_Event)
                     log.infof("Window destroyed: %v", window_destroyed_event)
+                    renderer.destroy_window(window_contexts[window_destroyed_event.window_id])
+                    delete_key(&window_ids, window_destroyed_event.window_id)
+                    delete_key(&window_contexts, window_destroyed_event.window_id)
                 case platform.Window_Moved_Event:
                     window_move_event := event.(platform.Window_Moved_Event)
                     log.infof("Window moved: %v", window_move_event)
@@ -87,10 +95,15 @@ worker :: proc(t: ^thread.Thread) {
         }
 
         if all_closed {
-            return
+            break
         }
         
         thread.yield()
+    }
+
+    for window_id in window_ids {
+        window_context_id := window_contexts[window_id]
+        renderer.destroy_window(window_context_id)
     }
 }
 
@@ -105,7 +118,11 @@ main :: proc() {
         context.allocator = mem.tracking_allocator(&tracking_allocator)
     }
 
-    platform.init()
+    if !platform.init() {
+        log.error("Failed to initialize platform")
+        return
+    }
+
     ecs.init()
     if !renderer.init(.Vulkan, "Chronicle") {
         log.error("Failed to initialize renderer")
