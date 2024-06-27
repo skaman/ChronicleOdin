@@ -3,6 +3,7 @@ package renderer_vulkan
 import "core:strings"
 import "core:log"
 import "base:runtime"
+import "core:math"
 
 import vk "vendor:vulkan"
 
@@ -10,50 +11,10 @@ import "../../platform"
 import "../../utils"
 
 @private
-Vulkan_Context :: struct {
-    instance: vk.Instance,
-    allocator: ^vk.AllocationCallbacks,
-    debug_utils_messenger: vk.DebugUtilsMessengerEXT,
-    debug_utils_context: runtime.Context,
-    device: Vulkan_Device,
-}
-
-@private
-Vulkan_Device :: struct {
-    physical_device: vk.PhysicalDevice,
-    logical_device: vk.Device,
-    swapchain_support: Vulkan_Swapchain_Support_Info,
-    graphics_queue_index: u32,
-    present_queue_index: u32,
-    transfer_queue_index: u32,
-
-    graphics_queue: vk.Queue,
-    present_queue: vk.Queue,
-    transfer_queue: vk.Queue,
-
-    properties: vk.PhysicalDeviceProperties,
-    features: vk.PhysicalDeviceFeatures,
-    memory: vk.PhysicalDeviceMemoryProperties,
-}
-
-@private
-Vulkan_Swapchain_Support_Info :: struct {
-    capabilities: vk.SurfaceCapabilitiesKHR,
-    surface_formats: []vk.SurfaceFormatKHR,
-    present_modes: []vk.PresentModeKHR,
-}
-
-Vulkan_Render_Window_Context :: struct {
-    instance: platform.Instance,
-    handle: platform.Handle,
-    surface: vk.SurfaceKHR,
-}
-
-@private
 global_context : Vulkan_Context
 
 @(private="file")
-global_window_contexts : utils.Free_List(Vulkan_Render_Window_Context)
+global_window_contexts : utils.Free_List(Vulkan_Window_Context)
 
 @(private="file")
 vk_debug_utils_messenger_callback :: proc "system" (messageSeverity: vk.DebugUtilsMessageSeverityFlagsEXT,
@@ -76,6 +37,23 @@ vk_debug_utils_messenger_callback :: proc "system" (messageSeverity: vk.DebugUti
     return false
 }
 
+@(private="file")
+vk_find_memory_index :: proc(type_filter: u32, property_flags: vk.MemoryPropertyFlags) -> u32 {
+    memory_properties: vk.PhysicalDeviceMemoryProperties
+    vk.GetPhysicalDeviceMemoryProperties(global_context.device.physical_device, &memory_properties)
+
+    for i in 0..<memory_properties.memoryTypeCount {
+        // Check each memory type to see if its bit is set to 1
+        if type_filter & (1 << i) != 0 &&
+           memory_properties.memoryTypes[i].propertyFlags & property_flags == property_flags {
+            return i
+        }
+    }
+
+    log.warn("Failed to find suitable memory type")
+    return math.max(u32)
+}
+
 init :: proc(app_name: string) -> b8 {
     utils.init_free_list(&global_window_contexts)
 
@@ -93,6 +71,9 @@ init :: proc(app_name: string) -> b8 {
 
     
     vk.load_proc_addresses(proc_address)
+
+    // Function pointers
+    global_context.find_memory_index = vk_find_memory_index
 
     // TODO: Add a custom allocator
     global_context.allocator = nil
@@ -217,10 +198,9 @@ destroy :: proc() {
 }
 
 init_window :: proc(instance: platform.Instance, handle: platform.Handle) -> (u32, b8) {
-    window_context := Vulkan_Render_Window_Context{
-        instance,
-        handle,
-        {},
+    window_context := Vulkan_Window_Context{
+        instance = instance,
+        handle = handle,
     }
 
     if !vk_platform_create_vulkan_surface(&window_context) {
@@ -236,6 +216,10 @@ init_window :: proc(instance: platform.Instance, handle: platform.Handle) -> (u3
         }
     }
 
+    // Swapchain creation
+    vk_swapchain_create(&window_context, window_context.framebuffer_width,
+                        window_context.framebuffer_height, &window_context.swapchain)
+
     log.info("Vulkan window initialized successfully")
 
     return utils.add_to_free_list(&global_window_contexts, window_context), true
@@ -243,6 +227,9 @@ init_window :: proc(instance: platform.Instance, handle: platform.Handle) -> (u3
 
 destroy_window :: proc(window_context_id: u32) {
     window_context := utils.get_from_free_list(&global_window_contexts, window_context_id)
+    
+    vk_swapchain_destroy(window_context, &window_context.swapchain)
+
     vk.DestroySurfaceKHR(global_context.instance, window_context.surface, global_context.allocator)
     utils.remove_from_free_list(&global_window_contexts, window_context_id)
     log.debug("Vulkan surface destroyed")

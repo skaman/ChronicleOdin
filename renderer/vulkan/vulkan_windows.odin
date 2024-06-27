@@ -12,7 +12,7 @@ VULKAN_LIBRARY_NAME :: "vulkan-1.dll"
 VULKAN_PLATFORM_EXTENSIONS :: [1]cstring{vk.KHR_WIN32_SURFACE_EXTENSION_NAME}
 
 @private
-vk_platform_create_vulkan_surface :: proc(window_context: ^Vulkan_Render_Window_Context) -> b8 {
+vk_platform_create_vulkan_surface :: proc(window_context: ^Vulkan_Window_Context) -> b8 {
     create_info := vk.Win32SurfaceCreateInfoKHR {
         sType = vk.StructureType.WIN32_SURFACE_CREATE_INFO_KHR,
         pNext = nil,

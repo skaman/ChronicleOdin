@@ -5,12 +5,6 @@ import "core:math"
 
 import vk "vendor:vulkan"
 
-//@private
-//Vulkan_Device :: struct {
-//    physical_device: vk.PhysicalDevice,
-//    logical_device: vk.Device,
-//}
-
 @(private="file")
 Vulkan_Physical_Device_Requirements :: struct {
     graphics: b8,
@@ -313,7 +307,9 @@ vk_device_create :: proc(surface: vk.SurfaceKHR) -> b8 {
             pNext = nil,
             flags = {},
             queueFamilyIndex = indices[i],
-            queueCount = indices[i] == global_context.device.graphics_queue_index ? 2 : 1,
+            queueCount = 1,
+            // TODO: Enable this for a future enhancement
+            //queueCount = indices[i] == global_context.device.graphics_queue_index ? 2 : 1,
             pQueuePriorities = &queue_priority,
         }
     }
@@ -439,4 +435,32 @@ vk_query_swapchain_support :: proc(physical_device: vk.PhysicalDevice,
         log.errorf("Failed to get present modes: %v", result)
         return
     }
+}
+
+@private
+vk_device_detect_depth_format :: proc(device: ^Vulkan_Device) -> b8 {
+    CANDIDATE_COUNT :: 3
+    candidates := [CANDIDATE_COUNT]vk.Format{
+        vk.Format.D32_SFLOAT,
+        vk.Format.D32_SFLOAT_S8_UINT,
+        vk.Format.D24_UNORM_S8_UINT,
+    }
+
+    //flags: vk.FormatFeatureFlags = {.DEPTH_STENCIL_ATTACHMENT}
+    for i in 0..<CANDIDATE_COUNT {
+        format := candidates[i]
+        properties : vk.FormatProperties
+        vk.GetPhysicalDeviceFormatProperties(device.physical_device, format, &properties)
+        
+        if vk.FormatFeatureFlag.DEPTH_STENCIL_ATTACHMENT in properties.linearTilingFeatures {
+            device.depth_format = format
+            return true
+        }
+        else if vk.FormatFeatureFlag.DEPTH_STENCIL_ATTACHMENT in properties.optimalTilingFeatures {
+            device.depth_format = format
+            return true
+        }
+    }
+
+    return false
 }

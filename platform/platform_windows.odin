@@ -36,7 +36,8 @@ App_Event_Destroy_Window :: struct {
     window_id: Window_Id       // The identifier of the window to be destroyed.
 }
 
-// App_Event_Set_Window_Position is a structure that represents an event to set the position of a window.
+// App_Event_Set_Window_Position is a structure that represents an event to set the position of a
+// window.
 @(private="file")
 App_Event_Set_Window_Position :: struct {
     window_id: Window_Id,      // The identifier of the window.
@@ -60,7 +61,8 @@ App_Event_Set_Window_Title :: struct {
 }
 
 
-// App_Event_Set_Window_Fullscreen is a structure that represents an event to set the fullscreen state of a window.
+// App_Event_Set_Window_Fullscreen is a structure that represents an event to set the fullscreen
+// state of a window.
 @(private="file")
 App_Event_Set_Window_Fullscreen :: struct {
     window_id: Window_Id,      // The identifier of the window.
@@ -89,11 +91,13 @@ global_windows : utils.Free_List(Window_Info)
 @(private="file")
 global_windows_lock : sync.Mutex
 
-// global_app_to_win32_queue is a global single-producer, single-consumer queue for application-to-Win32 events.
+// global_app_to_win32_queue is a global single-producer, single-consumer queue for
+// application-to-Win32 events.
 @(private="file")
 global_app_to_win32_queue : utils.Sp_Sc_Queue(App_Event)
 
-// global_win32_to_app_queue is a global single-producer, single-consumer queue for Win32-to-application events.
+// global_win32_to_app_queue is a global single-producer, single-consumer queue for
+// Win32-to-application events.
 @(private="file")
 global_win32_to_app_queue : utils.Sp_Sc_Queue(Platform_Event)
 
@@ -156,7 +160,10 @@ win32_get_window :: proc(window_id: Window_Id) -> ^Window_Info {
 // Returns:
 //   win32.LRESULT - The result of the message processing.
 @(private="file")
-win32_window_proc :: proc(hWnd: win32.HWND, Msg: win32.UINT, wParam: win32.WPARAM, lParam: win32.LPARAM) -> win32.LRESULT {
+win32_window_proc :: proc(hWnd: win32.HWND,
+                          Msg: win32.UINT,
+                          wParam: win32.WPARAM,
+                          lParam: win32.LPARAM) -> win32.LRESULT {
     window_id := Window_Id(win32.GetWindowLongW(hWnd, win32.GWLP_USERDATA))
 
     result: win32.LRESULT = 0
@@ -174,7 +181,8 @@ win32_window_proc :: proc(hWnd: win32.HWND, Msg: win32.UINT, wParam: win32.WPARA
                     window_info.y = i32(y)
                 }
             }
-            utils.push_sp_sc_queue(&global_win32_to_app_queue, Window_Moved_Event{window_id, i32(x), i32(y)})
+            utils.push_sp_sc_queue(&global_win32_to_app_queue,
+                                   Window_Moved_Event{window_id, i32(x), i32(y)})
         case win32.WM_SIZE:
             width := win32.LOWORD(u32(lParam))
             height := win32.HIWORD(u32(lParam))
@@ -191,9 +199,12 @@ win32_window_proc :: proc(hWnd: win32.HWND, Msg: win32.UINT, wParam: win32.WPARA
 
                 is_fullscreen = window_info.is_fullscreen
             }
-            utils.push_sp_sc_queue(&global_win32_to_app_queue, Window_Resized_Event{window_id, i32(width), i32(height), is_fullscreen})
+            utils.push_sp_sc_queue(&global_win32_to_app_queue,
+                                   Window_Resized_Event{window_id, i32(width), i32(height),
+                                                        is_fullscreen})
         case win32.WM_CLOSE, win32.WM_QUIT:
-            utils.push_sp_sc_queue(&global_win32_to_app_queue, Window_Close_Requested_Event{window_id})
+            utils.push_sp_sc_queue(&global_win32_to_app_queue,
+                                   Window_Close_Requested_Event{window_id})
         case win32.WM_DESTROY:
             utils.push_sp_sc_queue(&global_win32_to_app_queue, Window_Destroyed_Event{window_id})
         case win32.WM_SYSKEYDOWN, win32.WM_KEYDOWN, win32.WM_SYSKEYUP, win32.WM_KEYUP:
@@ -224,7 +235,8 @@ win32_window_proc :: proc(hWnd: win32.HWND, Msg: win32.UINT, wParam: win32.WPARA
                     utf16_len = 1;
                 }
 
-                len := win32.WideCharToMultiByte(win32.CP_UTF8, 0, &utf16[0], utf16_len, &utf8[0], size_of(utf8), nil, nil)
+                len := win32.WideCharToMultiByte(win32.CP_UTF8, 0, &utf16[0], utf16_len,
+                                                 &utf8[0], size_of(utf8), nil, nil)
                 if len > 0 {
                     char_event := Char_Event{
                         window_id,
@@ -366,7 +378,9 @@ win32_create_window :: proc(evn: App_Event_Create_Window) {
         win32.SetWindowLongW(window_handle, win32.GWLP_USERDATA, i32(evn.window_id))
         win32.ShowWindow(window_handle, win32.SW_SHOW)
 
-        utils.push_sp_sc_queue(&global_win32_to_app_queue, Window_Created_Event{evn.window_id, Handle(window_handle), Instance(global_instance)})
+        utils.push_sp_sc_queue(&global_win32_to_app_queue,
+                               Window_Created_Event{evn.window_id, Handle(window_handle),
+                                                    Instance(global_instance)})
     }
     else {
         log.error("Failed to create window")
@@ -480,7 +494,8 @@ win32_set_window_title :: proc(evn: App_Event_Set_Window_Title) {
 // Sets the fullscreen state of a window.
 //
 // Parameters:
-//   evn: App_Event_Set_Window_Fullscreen - The event containing the new fullscreen state information.
+//   evn: App_Event_Set_Window_Fullscreen - The event containing the new fullscreen state
+//                                          information.
 @(private="file")
 win32_set_fullscreen :: proc(evn: App_Event_Set_Window_Fullscreen) {
     handle : win32.HWND
@@ -602,7 +617,8 @@ xinput_poll_gamepads :: proc() {
             if (gamepad.state.Gamepad.bLeftTrigger != state.Gamepad.bLeftTrigger)
             {
                 value := i32(state.Gamepad.bLeftTrigger)
-                if xinput_filter_axis(Gamepad_Axis.Left_Trigger, i32(gamepad.state.Gamepad.bLeftTrigger), &value) {
+                if xinput_filter_axis(Gamepad_Axis.Left_Trigger,
+                                      i32(gamepad.state.Gamepad.bLeftTrigger), &value) {
                     event := Gamepad_Axis_Event{
                         Gamepad_Id(i),
                         Gamepad_Axis.Left_Trigger,
@@ -617,7 +633,8 @@ xinput_poll_gamepads :: proc() {
             if (gamepad.state.Gamepad.bRightTrigger != state.Gamepad.bRightTrigger)
             {
                 value := i32(state.Gamepad.bRightTrigger)
-                if xinput_filter_axis(Gamepad_Axis.Right_Trigger, i32(gamepad.state.Gamepad.bRightTrigger), &value) {
+                if xinput_filter_axis(Gamepad_Axis.Right_Trigger,
+                                      i32(gamepad.state.Gamepad.bRightTrigger), &value) {
                     event := Gamepad_Axis_Event{
                         Gamepad_Id(i),
                         Gamepad_Axis.Right_Trigger,
@@ -632,7 +649,8 @@ xinput_poll_gamepads :: proc() {
             if (gamepad.state.Gamepad.sThumbLX != state.Gamepad.sThumbLX)
             {
                 value := i32(state.Gamepad.sThumbLX)
-                if xinput_filter_axis(Gamepad_Axis.Left_Thumb_X, i32(gamepad.state.Gamepad.sThumbLX), &value) {
+                if xinput_filter_axis(Gamepad_Axis.Left_Thumb_X,
+                                      i32(gamepad.state.Gamepad.sThumbLX), &value) {
                     event := Gamepad_Axis_Event{
                         Gamepad_Id(i),
                         Gamepad_Axis.Left_Thumb_X,
@@ -647,7 +665,8 @@ xinput_poll_gamepads :: proc() {
             if (gamepad.state.Gamepad.sThumbLY != state.Gamepad.sThumbLY)
             {
                 value := i32(state.Gamepad.sThumbLY)
-                if xinput_filter_axis(Gamepad_Axis.Left_Thumb_Y, i32(gamepad.state.Gamepad.sThumbLY), &value) {
+                if xinput_filter_axis(Gamepad_Axis.Left_Thumb_Y,
+                                      i32(gamepad.state.Gamepad.sThumbLY), &value) {
                     event := Gamepad_Axis_Event{
                         Gamepad_Id(i),
                         Gamepad_Axis.Left_Thumb_Y,
@@ -662,7 +681,8 @@ xinput_poll_gamepads :: proc() {
             if (gamepad.state.Gamepad.sThumbRX != state.Gamepad.sThumbRX)
             {
                 value := i32(state.Gamepad.sThumbRX)
-                if xinput_filter_axis(Gamepad_Axis.Right_Thumb_X, i32(gamepad.state.Gamepad.sThumbRX), &value) {
+                if xinput_filter_axis(Gamepad_Axis.Right_Thumb_X,
+                                      i32(gamepad.state.Gamepad.sThumbRX), &value) {
                     event := Gamepad_Axis_Event{
                         Gamepad_Id(i),
                         Gamepad_Axis.Right_Thumb_X,
@@ -677,7 +697,8 @@ xinput_poll_gamepads :: proc() {
             if (gamepad.state.Gamepad.sThumbRY != state.Gamepad.sThumbRY)
             {
                 value := i32(state.Gamepad.sThumbRY)
-                if xinput_filter_axis(Gamepad_Axis.Right_Thumb_Y, i32(gamepad.state.Gamepad.sThumbRY), &value) {
+                if xinput_filter_axis(Gamepad_Axis.Right_Thumb_Y,
+                                      i32(gamepad.state.Gamepad.sThumbRY), &value) {
                     event := Gamepad_Axis_Event{
                         Gamepad_Id(i),
                         Gamepad_Axis.Right_Thumb_Y,
@@ -899,7 +920,8 @@ destroy_window :: proc(window_id: Window_Id) {
 //   x: i32 - The new x-coordinate of the window.
 //   y: i32 - The new y-coordinate of the window.
 set_window_position :: proc(window_id: Window_Id, x: i32, y: i32) {
-    utils.push_sp_sc_queue(&global_app_to_win32_queue, App_Event_Set_Window_Position{window_id, x, y})
+    utils.push_sp_sc_queue(&global_app_to_win32_queue,
+                           App_Event_Set_Window_Position{window_id, x, y})
 }
 
 // Sets the size of a window.
@@ -909,7 +931,8 @@ set_window_position :: proc(window_id: Window_Id, x: i32, y: i32) {
 //   width: i32 - The new width of the window.
 //   height: i32 - The new height of the window.
 set_window_size :: proc(window_id: Window_Id, width: i32, height: i32) {
-    utils.push_sp_sc_queue(&global_app_to_win32_queue, App_Event_Set_Window_Size{window_id, width, height})
+    utils.push_sp_sc_queue(&global_app_to_win32_queue,
+                           App_Event_Set_Window_Size{window_id, width, height})
 }
 
 // Sets the title of a window.
@@ -918,7 +941,8 @@ set_window_size :: proc(window_id: Window_Id, width: i32, height: i32) {
 //   window_id: Window_Id - The identifier of the window to rename.
 //   title: string - The new title of the window.
 set_window_title :: proc(window_id: Window_Id, title: string) {
-    utils.push_sp_sc_queue(&global_app_to_win32_queue, App_Event_Set_Window_Title{window_id, title})
+    utils.push_sp_sc_queue(&global_app_to_win32_queue,
+                           App_Event_Set_Window_Title{window_id, title})
 }
 
 // Sets the fullscreen state of a window.
@@ -927,7 +951,8 @@ set_window_title :: proc(window_id: Window_Id, title: string) {
 //   window_id: Window_Id - The identifier of the window to modify.
 //   fullscreen: bool - Indicates whether the window should be fullscreen.
 set_window_fullscreen :: proc(window_id: Window_Id, fullscreen: bool) {
-    utils.push_sp_sc_queue(&global_app_to_win32_queue, App_Event_Set_Window_Fullscreen{window_id, fullscreen})
+    utils.push_sp_sc_queue(&global_app_to_win32_queue,
+                           App_Event_Set_Window_Fullscreen{window_id, fullscreen})
 }
 
 // Polls for platform events.
