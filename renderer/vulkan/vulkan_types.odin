@@ -31,6 +31,8 @@ Vulkan_Device :: struct {
     present_queue: vk.Queue,
     transfer_queue: vk.Queue,
 
+    graphics_command_pool: vk.CommandPool,
+
     properties: vk.PhysicalDeviceProperties,
     features: vk.PhysicalDeviceFeatures,
     memory: vk.PhysicalDeviceMemoryProperties,
@@ -115,6 +117,8 @@ Vulkan_Window_Context :: struct {
 
     swapchain: Vulkan_Swapchain,
     main_renderpass: Vulkan_Render_Pass,
+
+    graphics_command_buffers: []Vulkan_Command_Buffer,
 
     image_index: u32,
     current_frame: u32,

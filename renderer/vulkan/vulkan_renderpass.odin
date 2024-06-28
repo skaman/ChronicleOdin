@@ -6,6 +6,7 @@ import vk "vendor:vulkan"
 
 import "../../mathx"
 
+@private
 vk_renderpass_create :: proc(window_context: ^Vulkan_Window_Context,
                              out_renderpass: ^Vulkan_Render_Pass,
                              render_area: mathx.Vector4,
@@ -111,6 +112,7 @@ vk_renderpass_create :: proc(window_context: ^Vulkan_Window_Context,
     }
 }
 
+@private
 vk_renderpass_destroy :: proc(renderpass: ^Vulkan_Render_Pass) {
     if renderpass.handle != 0 {
         vk.DestroyRenderPass(global_context.device.logical_device,
@@ -120,6 +122,7 @@ vk_renderpass_destroy :: proc(renderpass: ^Vulkan_Render_Pass) {
     }
 }
 
+@private
 vk_renderpass_begin :: proc(command_buffer: ^Vulkan_Command_Buffer,
                             renderpass: ^Vulkan_Render_Pass,
                             framebuffer: vk.Framebuffer) {
@@ -148,6 +151,7 @@ vk_renderpass_begin :: proc(command_buffer: ^Vulkan_Command_Buffer,
     renderpass.state = .In_Render_Pass
 }
 
+@private
 vk_renderpass_end :: proc(command_buffer: ^Vulkan_Command_Buffer,
                           renderpass: ^Vulkan_Render_Pass) {
     vk.CmdEndRenderPass(command_buffer.handle)

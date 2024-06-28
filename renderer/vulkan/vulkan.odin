@@ -55,6 +55,45 @@ vk_find_memory_index :: proc(type_filter: u32, property_flags: vk.MemoryProperty
     return math.max(u32)
 }
 
+@(private="file")
+vk_create_command_buffers :: proc(window_context: ^Vulkan_Window_Context) {
+    if window_context.graphics_command_buffers == nil {
+        window_context.graphics_command_buffers = make([]Vulkan_Command_Buffer,
+                                                        len(window_context.swapchain.images))
+    }
+
+    for i in 0..<len(window_context.swapchain.images) {
+        if window_context.graphics_command_buffers[i].handle != nil {
+            vk_command_buffer_free(global_context.device.graphics_command_pool,
+                                   &window_context.graphics_command_buffers[i])
+        }
+        window_context.graphics_command_buffers[i] = {}
+        vk_command_buffer_allocate(global_context.device.graphics_command_pool,
+                                   true,
+                                   &window_context.graphics_command_buffers[i])
+    }
+
+    log.debug("Vulkan command buffers created")
+}
+
+@(private="file")
+vk_destroy_command_buffers :: proc(window_context: ^Vulkan_Window_Context) {
+    for i in 0..<len(window_context.swapchain.images) {
+        if window_context.graphics_command_buffers[i].handle != nil {
+            vk_command_buffer_free(global_context.device.graphics_command_pool,
+                                    &window_context.graphics_command_buffers[i])
+            window_context.graphics_command_buffers[i].handle = nil
+        }
+    }
+    
+    if window_context.graphics_command_buffers != nil {
+        delete(window_context.graphics_command_buffers)
+        window_context.graphics_command_buffers = nil
+    }
+
+    log.debug("Vulkan command buffers destroyed")
+}
+
 init :: proc(app_name: string) -> b8 {
     utils.init_free_list(&global_window_contexts)
 
@@ -228,6 +267,9 @@ init_window :: proc(instance: platform.Instance, handle: platform.Handle) -> (u3
                          mathx.Vector4{0, 0, 0.2, 1},
                          1.0, 0)
 
+    // Create command buffers
+    vk_create_command_buffers(&window_context)          
+
     log.info("Vulkan window initialized successfully")
 
     return utils.add_to_free_list(&global_window_contexts, window_context), true
@@ -236,6 +278,7 @@ init_window :: proc(instance: platform.Instance, handle: platform.Handle) -> (u3
 destroy_window :: proc(window_context_id: u32) {
     window_context := utils.get_from_free_list(&global_window_contexts, window_context_id)
     
+    vk_destroy_command_buffers(window_context)
     vk_renderpass_destroy(&window_context.main_renderpass)
     vk_swapchain_destroy(window_context, &window_context.swapchain)
 

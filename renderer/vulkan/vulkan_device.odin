@@ -366,6 +366,24 @@ vk_device_create :: proc(surface: vk.SurfaceKHR) -> b8 {
 
     log.info("Queue handles acquired")
 
+    // Create command pool for graphics queue
+    command_pool_create_info := vk.CommandPoolCreateInfo{
+        sType = vk.StructureType.COMMAND_POOL_CREATE_INFO,
+        pNext = nil,
+        flags = {.RESET_COMMAND_BUFFER},
+        queueFamilyIndex = global_context.device.graphics_queue_index,
+    }
+    result = vk.CreateCommandPool(global_context.device.logical_device,
+                                  &command_pool_create_info,
+                                  global_context.allocator,
+                                  &global_context.device.graphics_command_pool)
+    if result != vk.Result.SUCCESS {
+        log.errorf("Failed to create command pool: %v", result)
+        return false
+    }
+
+    log.info("Command pool created")
+
     return true
 }
 
@@ -374,6 +392,14 @@ vk_device_destroy :: proc() {
     global_context.device.graphics_queue = nil
     global_context.device.present_queue = nil
     global_context.device.transfer_queue = nil
+
+    log.info("Destroying command pool...")
+    if global_context.device.graphics_command_pool != 0 {
+        vk.DestroyCommandPool(global_context.device.logical_device,
+                              global_context.device.graphics_command_pool,
+                              global_context.allocator)
+        global_context.device.graphics_command_pool = 0
+    }
 
     log.info("Destroying logical device...")
     if global_context.device.logical_device != nil {
