@@ -9,6 +9,7 @@ import vk "vendor:vulkan"
 
 import "../../platform"
 import "../../utils"
+import "../../mathx"
 
 @private
 global_context : Vulkan_Context
@@ -220,6 +221,13 @@ init_window :: proc(instance: platform.Instance, handle: platform.Handle) -> (u3
     vk_swapchain_create(&window_context, window_context.framebuffer_width,
                         window_context.framebuffer_height, &window_context.swapchain)
 
+    // Render pass creation
+    vk_renderpass_create(&window_context, &window_context.main_renderpass,
+                         mathx.Vector4{0, 0, f32(window_context.framebuffer_width),
+                                             f32(window_context.framebuffer_height)},
+                         mathx.Vector4{0, 0, 0.2, 1},
+                         1.0, 0)
+
     log.info("Vulkan window initialized successfully")
 
     return utils.add_to_free_list(&global_window_contexts, window_context), true
@@ -228,6 +236,7 @@ init_window :: proc(instance: platform.Instance, handle: platform.Handle) -> (u3
 destroy_window :: proc(window_context_id: u32) {
     window_context := utils.get_from_free_list(&global_window_contexts, window_context_id)
     
+    vk_renderpass_destroy(&window_context.main_renderpass)
     vk_swapchain_destroy(window_context, &window_context.swapchain)
 
     vk.DestroySurfaceKHR(global_context.instance, window_context.surface, global_context.allocator)

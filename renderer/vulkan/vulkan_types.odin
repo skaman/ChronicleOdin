@@ -5,6 +5,8 @@ import "base:runtime"
 import vk "vendor:vulkan"
 
 import "../../platform"
+import "../../mathx"
+
 @private
 Vulkan_Context :: struct {
     instance: vk.Instance,
@@ -46,6 +48,28 @@ Vulkan_Image :: struct {
 }
 
 @private
+Vulkan_Render_Pass_State :: enum {
+    Ready,
+    Recording,
+    In_Render_Pass,
+    Recording_Ended,
+    Submitted,
+    Not_Allocated,
+}
+
+@private
+Vulkan_Render_Pass :: struct {
+    handle: vk.RenderPass,
+    render_area: mathx.Vector4,
+    clear_color: mathx.Vector4,
+
+    depth: f32,
+    stencil: u32,
+
+    state: Vulkan_Render_Pass_State,
+}
+
+@private
 Vulkan_Swapchain :: struct {
     image_format: vk.SurfaceFormatKHR,
     max_frames_in_flight: u8,
@@ -54,6 +78,23 @@ Vulkan_Swapchain :: struct {
     image_views: []vk.ImageView,
 
     depth_attachment: Vulkan_Image,
+}
+
+@private
+Vulkan_Command_Buffer_State :: enum {
+    Ready,
+    Recording,
+    In_Render_Pass,
+    Recording_Ended,
+    Submitted,
+    Not_Allocated,
+}
+
+@private
+Vulkan_Command_Buffer :: struct {
+    handle: vk.CommandBuffer,
+
+    state: Vulkan_Command_Buffer_State,
 }
 
 @private
@@ -73,6 +114,7 @@ Vulkan_Window_Context :: struct {
     framebuffer_height: u32,
 
     swapchain: Vulkan_Swapchain,
+    main_renderpass: Vulkan_Render_Pass,
 
     image_index: u32,
     current_frame: u32,
