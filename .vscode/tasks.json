@@ -9,7 +9,16 @@
             "command": "cmd",
             "args": [
                 "/C",
-                "if not exist .\\build mkdir .\\build"
+                "if not exist .\\bin mkdir .\\bin"
+            ]
+        },
+        {
+            "label": "assets",
+            "type": "shell",
+            "command": "cmd",
+            "args": [
+                "/C",
+                "build-assets.bat"
             ]
         },
         {
@@ -20,7 +29,7 @@
                 "build",
                 ".",
                 "-debug",
-                "-out:build/debug.exe"
+                "-out:bin/chronicle_debug.exe"
             ],
             "group": "build"
         },
@@ -28,6 +37,7 @@
             "label": "Build",
             "dependsOn": [
                 "mkdir",
+                "assets",
                 "build"
             ],
             "group": {

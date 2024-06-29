@@ -6,7 +6,7 @@
             "request": "launch",
             "preLaunchTask": "Build",
             "name": "Debug",
-            "program": "${workspaceFolder}/build/debug.exe",
+            "program": "${workspaceFolder}/bin/chronicle_debug.exe",
             "args": [],
             "cwd": "${workspaceFolder}"
         }

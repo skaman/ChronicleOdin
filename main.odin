@@ -4,9 +4,9 @@ import "core:log"
 import "core:mem"
 import "core:thread"
 
-import "ecs"
-import "platform"
-import "renderer"
+import "engine/ecs"
+import "engine/platform"
+import "engine/renderer"
 
 Window_State :: struct {
     x, y: i32,
