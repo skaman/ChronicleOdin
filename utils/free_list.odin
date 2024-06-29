@@ -18,7 +18,8 @@ Free_List :: struct($Type: typeid) {
 //   fl: ^Free_List - A pointer to the Free_List instance to initialize.
 //   capacity: u32 - The initial capacity of the Free_List data array.
 //   allocator: mem.Allocator - The allocator to use for memory allocation.
-init_free_list :: proc (fl: ^Free_List($Type), capacity: u32 = FREE_LIST_INITIAL_CAPACITY, allocator: mem.Allocator = context.allocator) {
+init_free_list :: proc (fl: ^Free_List($Type), capacity: u32 = FREE_LIST_INITIAL_CAPACITY,
+                                       allocator: mem.Allocator = context.allocator) {
     #assert(size_of(Type) >= size_of(u32), "Type size must be greater than u32 size")
 
     assert(fl != nil, "Free_List pointer is nil")

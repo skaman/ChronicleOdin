@@ -39,10 +39,13 @@ test_hash_table :: proc(t: ^testing.T) {
 
     // Test initialization
     init_hash_table(&hash_table, test_hash_proc, test_eq_proc)
-    testing.expectf(t, hash_table._hash_proc == test_hash_proc, "hash_proc failed: %p", hash_table._hash_proc)
-    testing.expectf(t, hash_table._eq_proc == test_eq_proc, "eq_proc failed: %p", hash_table._eq_proc)
+    testing.expectf(t, hash_table._hash_proc == test_hash_proc, "hash_proc failed: %p",
+                                                                hash_table._hash_proc)
+    testing.expectf(t, hash_table._eq_proc == test_eq_proc, "eq_proc failed: %p",
+                                                            hash_table._eq_proc)
     testing.expectf(t, hash_table._data != nil, "data is nil: %p", hash_table._data)
-    testing.expect(t, hash_table._capacity == HASH_TABLE_INITIAL_CAPACITY, "capacity is not HASH_TABLE_INITIAL_CAPACITY")
+    testing.expect(t, hash_table._capacity == HASH_TABLE_INITIAL_CAPACITY,
+                   "capacity is not HASH_TABLE_INITIAL_CAPACITY")
     testing.expect(t, hash_table._count == 0, "count is not 0")
 
     // Test add_to_hash_table with resize
@@ -55,7 +58,8 @@ test_hash_table :: proc(t: ^testing.T) {
         test.y = u32(i)
         add_to_hash_table(&hash_table, &test.x, test)
 
-        testing.expectf(t, hash_table._count == u32(i + 1), "count is not correct: %d", hash_table._count)
+        testing.expectf(t, hash_table._count == u32(i + 1), "count is not correct: %d",
+                                                            hash_table._count)
     }
 
     // Test get_from_hash_table
@@ -81,7 +85,8 @@ test_hash_table :: proc(t: ^testing.T) {
         defer delete(value.x)
         defer free(value)
         remove_from_hash_table(&hash_table, &key)
-        testing.expectf(t, hash_table._count == u32(HASH_TABLE_INITIAL_CAPACITY * 2 - i - 1), "count is not correct: %d", hash_table._count)
+        testing.expectf(t, hash_table._count == u32(HASH_TABLE_INITIAL_CAPACITY * 2 - i - 1),
+                        "count is not correct: %d", hash_table._count)
     }
 
     // Test get_from_hash_table for non-existent key
@@ -97,8 +102,10 @@ test_hash_table :: proc(t: ^testing.T) {
 
     // Test destroy_hash_table
     destroy_hash_table(&hash_table)
-    testing.expectf(t, hash_table._hash_proc == nil, "hash_proc is not nil: %p", hash_table._hash_proc)
-    testing.expectf(t, hash_table._eq_proc == nil, "eq_proc is not nil: %p", hash_table._eq_proc)
+    testing.expectf(t, hash_table._hash_proc == nil, "hash_proc is not nil: %p",
+                                                     hash_table._hash_proc)
+    testing.expectf(t, hash_table._eq_proc == nil, "eq_proc is not nil: %p",
+                                                   hash_table._eq_proc)
     testing.expect(t, hash_table._data == nil, "data is not nil")
     testing.expect(t, hash_table._capacity == 0, "capacity is not 0")
     testing.expect(t, hash_table._count == 0, "count is not 0")

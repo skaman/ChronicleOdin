@@ -17,7 +17,8 @@ test_free_list :: proc(t: ^testing.T) {
     init_free_list(&fl, 10)
 
     testing.expectf(t, fl.size == 0, "size is not correct: %d", fl.size)
-    testing.expectf(t, fl.next_free_index == math.max(u32), "next_free_index is not correct: %d", fl.next_free_index)
+    testing.expectf(t, fl.next_free_index == math.max(u32), "next_free_index is not correct: %d",
+                                                            fl.next_free_index)
     testing.expectf(t, len(fl.data) == 0, "data length is not correct: %d", len(fl.data))
 
     // Test a bunch of add_to_free_list calls
@@ -54,7 +55,8 @@ test_free_list :: proc(t: ^testing.T) {
     destroy_free_list(&fl)
 
     testing.expectf(t, fl.size == 0, "size is not correct: %d", fl.size)
-    testing.expectf(t, fl.next_free_index == 0, "next_free_index is not correct: %d", fl.next_free_index)
+    testing.expectf(t, fl.next_free_index == 0, "next_free_index is not correct: %d",
+                                                fl.next_free_index)
     testing.expectf(t, fl.data == nil, "data length is not correct: %d", len(fl.data))
 
     // Test memory leaks

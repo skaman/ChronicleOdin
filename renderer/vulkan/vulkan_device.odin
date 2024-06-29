@@ -34,19 +34,21 @@ Vulkan_Physical_Device_Queue_Family_Info :: struct {
 //   properties: ^vk.PhysicalDeviceProperties - Pointer to the device properties.
 //   features: ^vk.PhysicalDeviceFeatures - Pointer to the device features.
 //   requirements: ^Vulkan_Physical_Device_Requirements - Pointer to the device requirements.
-//   out_queue_info: ^Vulkan_Physical_Device_Queue_Family_Info - Pointer to store the queue family indices.
-//   out_swapchain_support: ^Vulkan_Swapchain_Support_Info - Pointer to store the swapchain support info.
+//   out_queue_info: ^Vulkan_Physical_Device_Queue_Family_Info - Pointer to store the queue family
+//                                                               indices.
+//   out_swapchain_support: ^Vulkan_Swapchain_Support_Info - Pointer to store the swapchain support
+//                                                           info.
 //
 // Returns:
 //   b8 - True if the device meets the requirements, otherwise false.
 @(private="file")
 vk_physical_device_meets_requirements :: proc(physical_device: vk.PhysicalDevice,
-                                              surface: vk.SurfaceKHR,
-                                              properties: ^vk.PhysicalDeviceProperties,
-                                              features: ^vk.PhysicalDeviceFeatures,
-                                              requirements: ^Vulkan_Physical_Device_Requirements,
-                                              out_queue_info: ^Vulkan_Physical_Device_Queue_Family_Info,
-                                              out_swapchain_support: ^Vulkan_Swapchain_Support_Info) -> b8 {
+                                      surface: vk.SurfaceKHR,
+                                      properties: ^vk.PhysicalDeviceProperties,
+                                      features: ^vk.PhysicalDeviceFeatures,
+                                      requirements: ^Vulkan_Physical_Device_Requirements,
+                                      out_queue_info: ^Vulkan_Physical_Device_Queue_Family_Info,
+                                      out_swapchain_support: ^Vulkan_Swapchain_Support_Info) -> b8 {
     out_queue_info.graphics_family_index = math.max(u32)
     out_queue_info.present_family_index = math.max(u32)
     out_queue_info.compute_family_index = math.max(u32)
@@ -61,7 +63,8 @@ vk_physical_device_meets_requirements :: proc(physical_device: vk.PhysicalDevice
     queue_family_count : u32
     vk.GetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nil)
     queue_families := make([]vk.QueueFamilyProperties, queue_family_count, context.temp_allocator)
-    vk.GetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, raw_data(queue_families))
+    vk.GetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count,
+                                              raw_data(queue_families))
 
     min_transfer_score := math.max(u8)
     for i in 0..<queue_family_count {
@@ -92,7 +95,8 @@ vk_physical_device_meets_requirements :: proc(physical_device: vk.PhysicalDevice
 
         // present queue?
         present_support : b32
-        result := vk.GetPhysicalDeviceSurfaceSupportKHR(physical_device, i, surface, &present_support)
+        result := vk.GetPhysicalDeviceSurfaceSupportKHR(physical_device, i, surface,
+                                                        &present_support)
         if result != vk.Result.SUCCESS {
             log.errorf("Failed to get surface support: %v", result)
             return false
@@ -109,10 +113,14 @@ vk_physical_device_meets_requirements :: proc(physical_device: vk.PhysicalDevice
               out_queue_info.compute_family_index != math.max(u32),
               out_queue_info.transfer_family_index != math.max(u32))
 
-    if (!requirements.graphics || (requirements.graphics && out_queue_info.graphics_family_index != math.max(u32))) &&
-       (!requirements.present || (requirements.graphics && out_queue_info.present_family_index != math.max(u32))) &&
-       (!requirements.compute || (requirements.graphics && out_queue_info.compute_family_index != math.max(u32))) &&
-       (!requirements.transfer || (requirements.graphics && out_queue_info.transfer_family_index != math.max(u32))) {
+    if (!requirements.graphics || (requirements.graphics &&
+                                   out_queue_info.graphics_family_index != math.max(u32))) &&
+       (!requirements.present || (requirements.graphics &&
+                                  out_queue_info.present_family_index != math.max(u32))) &&
+       (!requirements.compute || (requirements.graphics &&
+                                  out_queue_info.compute_family_index != math.max(u32))) &&
+       (!requirements.transfer || (requirements.graphics &&
+                                   out_queue_info.transfer_family_index != math.max(u32))) {
         log.info("Device meets queue requirements")
         log.debugf("Graphics: %v", out_queue_info.graphics_family_index)
         log.debugf("Present: %v", out_queue_info.present_family_index)
@@ -121,7 +129,8 @@ vk_physical_device_meets_requirements :: proc(physical_device: vk.PhysicalDevice
 
         vk_query_swapchain_support(physical_device, surface, out_swapchain_support)
 
-        if len(out_swapchain_support.surface_formats) < 1 || len(out_swapchain_support.present_modes) < 1 {
+        if len(out_swapchain_support.surface_formats) < 1 ||
+           len(out_swapchain_support.present_modes) < 1 {
             log.info("Required swapchain support not present, skipping device.")
             delete(out_swapchain_support.present_modes)
             delete(out_swapchain_support.surface_formats)
@@ -131,15 +140,19 @@ vk_physical_device_meets_requirements :: proc(physical_device: vk.PhysicalDevice
         // device extensions
         if len(requirements.device_extensions_names) > 0 {
             available_extensions_count : u32
-            result := vk.EnumerateDeviceExtensionProperties(physical_device, nil, &available_extensions_count, nil)
+            result := vk.EnumerateDeviceExtensionProperties(physical_device, nil,
+                                                            &available_extensions_count, nil)
             if result != vk.Result.SUCCESS {
                 log.errorf("Failed to enumerate device extensions count: %v, skipping", result)
                 delete(out_swapchain_support.present_modes)
                 delete(out_swapchain_support.surface_formats)
                 return false
             }
-            available_extensions := make([]vk.ExtensionProperties, available_extensions_count, context.temp_allocator)
-            result = vk.EnumerateDeviceExtensionProperties(physical_device, nil, &available_extensions_count, raw_data(available_extensions))
+            available_extensions := make([]vk.ExtensionProperties, available_extensions_count,
+                                         context.temp_allocator)
+            result = vk.EnumerateDeviceExtensionProperties(physical_device, nil,
+                                                           &available_extensions_count,
+                                                           raw_data(available_extensions))
             if result != vk.Result.SUCCESS {
                 log.errorf("Failed to enumerate device extensions: %v, skipping", result)
                 delete(out_swapchain_support.present_modes)
@@ -158,7 +171,8 @@ vk_physical_device_meets_requirements :: proc(physical_device: vk.PhysicalDevice
                 }
 
                 if !found {
-                    log.infof("Device does not support required extension: %v, skipping.", extension_name)
+                    log.infof("Device does not support required extension: %v, skipping.",
+                              extension_name)
                     return false
                 }
             }
@@ -200,7 +214,8 @@ vk_select_physical_device :: proc(surface: vk.SurfaceKHR) -> b8 {
     }
 
     physical_devices := make([]vk.PhysicalDevice, physical_device_count, context.temp_allocator)
-    result = vk.EnumeratePhysicalDevices(global_context.instance, &physical_device_count, raw_data(physical_devices))
+    result = vk.EnumeratePhysicalDevices(global_context.instance, &physical_device_count,
+                                         raw_data(physical_devices))
     if result != vk.Result.SUCCESS {
         log.errorf("Failed to enumerate physical devices: %v", result)
         return false
@@ -230,12 +245,12 @@ vk_select_physical_device :: proc(surface: vk.SurfaceKHR) -> b8 {
 
         queue_family_info : Vulkan_Physical_Device_Queue_Family_Info
         meet_requirements := vk_physical_device_meets_requirements(physical_device,
-                                                                   surface,
-                                                                   &properties,
-                                                                   &features,
-                                                                   &requirements,
-                                                                   &queue_family_info,
-                                                                   &global_context.device.swapchain_support)
+                                                           surface,
+                                                           &properties,
+                                                           &features,
+                                                           &requirements,
+                                                           &queue_family_info,
+                                                           &global_context.device.swapchain_support)
         if meet_requirements {
             switch properties.deviceType {
                 case .INTEGRATED_GPU:
@@ -306,8 +321,11 @@ vk_device_create :: proc(surface: vk.SurfaceKHR) -> b8 {
     }
 
     log.info("Creating logical device...")
-    present_shares_graphics_queue := global_context.device.graphics_queue_index == global_context.device.present_queue_index
-    transfer_shares_graphics_queue := global_context.device.graphics_queue_index == global_context.device.transfer_queue_index
+    present_shares_graphics_queue :=
+        global_context.device.graphics_queue_index == global_context.device.present_queue_index
+    transfer_shares_graphics_queue :=
+        global_context.device.graphics_queue_index == global_context.device.transfer_queue_index
+    
     index_count: u32 = 1
     if !present_shares_graphics_queue {
         index_count += 1
@@ -315,6 +333,7 @@ vk_device_create :: proc(surface: vk.SurfaceKHR) -> b8 {
     if !transfer_shares_graphics_queue {
         index_count += 1
     }
+
     indices := make([]u32, index_count, context.temp_allocator)
     index := 0
     indices[index] = global_context.device.graphics_queue_index
@@ -466,7 +485,8 @@ vk_device_destroy :: proc() {
 vk_query_swapchain_support :: proc(physical_device: vk.PhysicalDevice,
                                    surface: vk.SurfaceKHR,
                                    out_support: ^Vulkan_Swapchain_Support_Info) {
-    result := vk.GetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &out_support.capabilities)
+    result := vk.GetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface,
+                                                         &out_support.capabilities)
     if result != vk.Result.SUCCESS {
         log.errorf("Failed to get surface capabilities: %v", result)
         return
@@ -483,14 +503,16 @@ vk_query_swapchain_support :: proc(physical_device: vk.PhysicalDevice,
         delete(out_support.surface_formats)
     }
     out_support.surface_formats = make([]vk.SurfaceFormatKHR, format_count)
-    result = vk.GetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, raw_data(out_support.surface_formats))
+    result = vk.GetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count,
+                                                   raw_data(out_support.surface_formats))
     if result != vk.Result.SUCCESS {
         log.errorf("Failed to get surface formats: %v", result)
         return
     }
 
     present_mode_count : u32
-    result = vk.GetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, nil)
+    result = vk.GetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface,
+                                                        &present_mode_count, nil)
     if result != vk.Result.SUCCESS {
         log.errorf("Failed to get present modes count: %v", result)
         return
@@ -500,7 +522,9 @@ vk_query_swapchain_support :: proc(physical_device: vk.PhysicalDevice,
         delete(out_support.present_modes)
     }
     out_support.present_modes = make([]vk.PresentModeKHR, present_mode_count)
-    result = vk.GetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, raw_data(out_support.present_modes))
+    result = vk.GetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface,
+                                                        &present_mode_count,
+                                                        raw_data(out_support.present_modes))
     if result != vk.Result.SUCCESS {
         log.errorf("Failed to get present modes: %v", result)
         return

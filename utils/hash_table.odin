@@ -38,7 +38,8 @@ HASH_TABLE_INITIAL_CAPACITY :: 64
 //   eq_proc: proc - The equality function for the keys.
 //   capacity: u32 - The initial capacity of the Hash_Table data array.
 init_hash_table :: proc(t: ^Hash_Table($Key, $Value), hash_proc: proc(key: Key) -> u64,
-                        eq_proc: proc(a, b: Key) -> bool, capacity: u32 = HASH_TABLE_INITIAL_CAPACITY) {
+                        eq_proc: proc(a, b: Key) -> bool,
+                        capacity: u32 = HASH_TABLE_INITIAL_CAPACITY) {
     assert(t != nil, "Hash_Table pointer is nil")
     assert(t._data == nil, "Hash_Table data is not nil")
     assert(t._capacity == 0, "Hash_Table capacity is not 0")
@@ -80,7 +81,8 @@ resize_hash_table :: proc(t: ^Hash_Table($Key, $Value), new_capacity: u32) {
     assert(t != nil, "Hash_Table pointer is nil")
     assert(t._data != nil, "Hash_Table data is nil")
     assert(new_capacity > 0, "New capacity must be greater than 0")
-    assert(new_capacity >= t._count, "New capacity must be greater than or equal to the current count")
+    assert(new_capacity >= t._count,
+          "New capacity must be greater than or equal to the current count")
 
     ptr, _ := mem.alloc(int(size_of(Hash_Table_Entry(Key, Value)) * new_capacity))
 
@@ -89,7 +91,8 @@ resize_hash_table :: proc(t: ^Hash_Table($Key, $Value), new_capacity: u32) {
         entry := (^Hash_Table_Entry(Key, Value))(current_ptr)
 
         if entry.is_used {
-            add_to_hash_table_entries(rawptr(ptr), new_capacity, t._hash_proc, entry.key, entry.value)
+            add_to_hash_table_entries(rawptr(ptr), new_capacity, t._hash_proc,
+                                      entry.key, entry.value)
         }
     }
 
@@ -241,7 +244,8 @@ next_hash_table_iterator :: proc(it: ^Hash_Table_Iterator($Key, $Value)) -> bool
             return false
         }
 
-        ptr := uintptr(it._hash_table._data) + uintptr(it._index * size_of(Hash_Table_Entry(Key, Value)))
+        ptr := uintptr(it._hash_table._data) +
+               uintptr(it._index * size_of(Hash_Table_Entry(Key, Value)))
         entry := (^Hash_Table_Entry(Key, Value))(ptr)
 
         it._index += 1

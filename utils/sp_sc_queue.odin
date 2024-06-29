@@ -21,7 +21,8 @@ Sp_Sc_Queue :: struct($Type: typeid) {
 //
 // Parameters:
 //   queue: ^Sp_Sc_Queue($Type) - A pointer to the Sp_Sc_Queue instance.
-//   allocator: mem.Allocator - The memory allocator to use for the queue (default is context.allocator).
+//   allocator: mem.Allocator - The memory allocator to use for the queue
+//                              (default is context.allocator).
 init_sp_sc_queue :: proc(queue: ^Sp_Sc_Queue($Type), allocator: mem.Allocator = context.allocator) {
     queue.allocator = allocator
     queue.head = new(Sp_Sc_Queue_Node(Type), allocator)
