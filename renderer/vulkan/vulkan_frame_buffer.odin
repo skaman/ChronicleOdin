@@ -4,6 +4,14 @@ import "core:log"
 
 import vk "vendor:vulkan"
 
+// Creates a Vulkan frame buffer.
+//
+// Parameters:
+//   render_pass: ^Vulkan_Render_Pass - Pointer to the render pass associated with the frame buffer.
+//   width: u32 - The width of the frame buffer.
+//   height: u32 - The height of the frame buffer.
+//   attachments: []vk.ImageView - Array of image views to be attached to the frame buffer.
+//   out_frame_buffer: ^Vulkan_Frame_Buffer - Pointer to the Vulkan frame buffer to be created.
 @private
 vk_frame_buffer_create :: proc(render_pass: ^Vulkan_Render_Pass,
                                width: u32, height: u32,
@@ -35,6 +43,10 @@ vk_frame_buffer_create :: proc(render_pass: ^Vulkan_Render_Pass,
     }
 }
 
+// Destroys a Vulkan frame buffer.
+//
+// Parameters:
+//   frame_buffer: ^Vulkan_Frame_Buffer - Pointer to the Vulkan frame buffer to be destroyed.
 @private
 vk_frame_buffer_destroy :: proc(frame_buffer: ^Vulkan_Frame_Buffer) {
     vk.DestroyFramebuffer(global_context.device.logical_device,

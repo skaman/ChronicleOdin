@@ -11,12 +11,24 @@ import "../../platform"
 import "../../utils"
 import "../../mathx"
 
+// Contains the global context for Vulkan, including Vulkan instance and debug context.
 @private
 global_context : Vulkan_Context
 
+// Contains a global list of Vulkan window contexts.
 @(private="file")
 global_window_contexts : utils.Free_List(Vulkan_Window_Context)
 
+// Callback function for Vulkan debug utils messenger.
+//
+// Parameters:
+//   messageSeverity: vk.DebugUtilsMessageSeverityFlagsEXT - Severity of the debug message.
+//   messageTypes: vk.DebugUtilsMessageTypeFlagsEXT - Type of the debug message.
+//   pCallbackData: ^vk.DebugUtilsMessengerCallbackDataEXT - Pointer to callback data containing message information.
+//   pUserData: rawptr - Pointer to user data passed to the callback.
+//
+// Returns:
+//   b32 - False to indicate that the callback did not handle the message.
 @(private="file")
 vk_debug_utils_messenger_callback :: proc "system" (
                                             messageSeverity: vk.DebugUtilsMessageSeverityFlagsEXT,
@@ -39,6 +51,14 @@ vk_debug_utils_messenger_callback :: proc "system" (
     return false
 }
 
+// Finds a suitable memory type based on type filter and property flags.
+//
+// Parameters:
+//   type_filter: u32 - The filter specifying acceptable memory types.
+//   property_flags: vk.MemoryPropertyFlags - The desired properties of the memory.
+//
+// Returns:
+//   u32 - The index of the suitable memory type, or the maximum u32 value if not found.
 @(private="file")
 vk_find_memory_index :: proc(type_filter: u32, property_flags: vk.MemoryPropertyFlags) -> u32 {
     memory_properties: vk.PhysicalDeviceMemoryProperties
@@ -56,6 +76,10 @@ vk_find_memory_index :: proc(type_filter: u32, property_flags: vk.MemoryProperty
     return math.max(u32)
 }
 
+// Creates Vulkan command buffers for a given window context.
+//
+// Parameters:
+//   window_context: ^Vulkan_Window_Context - Pointer to the window context.
 @(private="file")
 vk_create_command_buffers :: proc(window_context: ^Vulkan_Window_Context) {
     if window_context.graphics_command_buffers == nil {
@@ -77,6 +101,10 @@ vk_create_command_buffers :: proc(window_context: ^Vulkan_Window_Context) {
     log.debug("Vulkan command buffers created")
 }
 
+// Destroys Vulkan command buffers for a given window context.
+//
+// Parameters:
+//   window_context: ^Vulkan_Window_Context - Pointer to the window context.
 @(private="file")
 vk_destroy_command_buffers :: proc(window_context: ^Vulkan_Window_Context) {
     for i in 0..<len(window_context.swapchain.images) {
@@ -95,6 +123,12 @@ vk_destroy_command_buffers :: proc(window_context: ^Vulkan_Window_Context) {
     log.debug("Vulkan command buffers destroyed")
 }
 
+// Regenerates Vulkan frame buffers for a given window context, swapchain, and render pass.
+//
+// Parameters:
+//   window_context: ^Vulkan_Window_Context - Pointer to the window context.
+//   swapchain: ^Vulkan_Swapchain - Pointer to the swapchain.
+//   render_pass: ^Vulkan_Render_Pass - Pointer to the render pass.
 @(private="file")
 vk_regenerate_frame_buffers :: proc(window_context: ^Vulkan_Window_Context,
                                     swapchain: ^Vulkan_Swapchain,
@@ -115,6 +149,13 @@ vk_regenerate_frame_buffers :: proc(window_context: ^Vulkan_Window_Context,
     log.debug("Vulkan frame buffers regenerated")
 }
 
+// Recreates the Vulkan swapchain for a given window context.
+//
+// Parameters:
+//   window_context: ^Vulkan_Window_Context - Pointer to the window context.
+//
+// Returns:
+//   b8 - True if the swapchain was successfully recreated, otherwise false.
 @(private="file")
 vk_recreate_swapchain :: proc(window_context: ^Vulkan_Window_Context) -> b8 {
     // If already being recreated, do no try again.
@@ -189,6 +230,13 @@ vk_recreate_swapchain :: proc(window_context: ^Vulkan_Window_Context) -> b8 {
     return true
 }
 
+// Initializes the Vulkan context and creates the Vulkan instance.
+//
+// Parameters:
+//   app_name: string - The name of the application.
+//
+// Returns:
+//   b8 - True if initialization was successful, otherwise false.
 init :: proc(app_name: string) -> b8 {
     utils.init_free_list(&global_window_contexts)
 
@@ -324,6 +372,7 @@ init :: proc(app_name: string) -> b8 {
     return true
 }
 
+// Destroys the Vulkan context and cleans up resources.
 destroy :: proc() {
     vk_device_destroy()
 
@@ -340,6 +389,16 @@ destroy :: proc() {
     utils.destroy_free_list(&global_window_contexts)
 }
 
+// Initializes a Vulkan window context.
+//
+// Parameters:
+//   instance: platform.Instance - The platform instance for the window.
+//   handle: platform.Handle - The handle for the window.
+//   width: u32 - The initial width of the window.
+//   height: u32 - The initial height of the window.
+//
+// Returns:
+//   (u32, b8) - The window context ID and a boolean indicating success or failure.
 init_window :: proc(instance: platform.Instance, handle: platform.Handle,
                     width: u32, height: u32) -> (u32, b8) {
     window_context := Vulkan_Window_Context{
@@ -432,6 +491,10 @@ init_window :: proc(instance: platform.Instance, handle: platform.Handle,
     return utils.add_to_free_list(&global_window_contexts, window_context), true
 }
 
+// Destroys a Vulkan window context.
+//
+// Parameters:
+//   window_context_id: u32 - The ID of the window context to destroy.
 destroy_window :: proc(window_context_id: u32) {
     window_context := utils.get_from_free_list(&global_window_contexts, window_context_id)
 
@@ -490,6 +553,12 @@ destroy_window :: proc(window_context_id: u32) {
     log.debug("Vulkan surface destroyed")
 }
 
+// Resizes a Vulkan window context.
+//
+// Parameters:
+//   window_context_id: u32 - The ID of the window context to resize.
+//   width: u32 - The new width of the window.
+//   height: u32 - The new height of the window.
 resize_window :: proc(window_context_id: u32, width: u32, height: u32) {
     window_context := utils.get_from_free_list(&global_window_contexts, window_context_id)
 
@@ -502,20 +571,16 @@ resize_window :: proc(window_context_id: u32, width: u32, height: u32) {
 
     log.infof("Vulkan window resized to %vx%v (%v)", width, height,
                                                      window_context.frame_buffer_size_generation)
-
-    //vk_swapchain_recreate(&window_context, window_context.frame_buffer_width,
-    //                      window_context.frame_buffer_height, &window_context.swapchain)
-    //
-    //vk_regenerate_frame_buffers(&window_context,
-    //                            &window_context.swapchain,
-    //                            &window_context.main_render_pass)
-    //
-    //vk_destroy_command_buffers(window_context)
-    //vk_create_command_buffers(window_context)
-
-    //log.debug("Vulkan window resized")
 }
 
+// Begins a new frame for the given window context.
+//
+// Parameters:
+//   window_context_id: u32 - The ID of the window context.
+//   delta_time: f32 - The time elapsed since the last frame.
+//
+// Returns:
+//   b8 - True if the frame was successfully begun, otherwise false.
 begin_frame :: proc(window_context_id: u32, delta_time: f32) -> b8 {
     window_context := utils.get_from_free_list(&global_window_contexts, window_context_id)
     device := &global_context.device
@@ -606,6 +671,14 @@ begin_frame :: proc(window_context_id: u32, delta_time: f32) -> b8 {
     return true
 }
 
+// Ends the current frame for the given window context.
+//
+// Parameters:
+//   window_context_id: u32 - The ID of the window context.
+//   delta_time: f32 - The time elapsed since the last frame.
+//
+// Returns:
+//   b8 - True if the frame was successfully ended, otherwise false.
 end_frame :: proc(window_context_id: u32, delta_time: f32) -> b8 {
     window_context := utils.get_from_free_list(&global_window_contexts, window_context_id)
     command_buffer := &window_context.graphics_command_buffers[window_context.image_index]

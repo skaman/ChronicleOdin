@@ -4,6 +4,11 @@ import "core:log"
 
 import vk "vendor:vulkan"
 
+// Creates a Vulkan fence.
+//
+// Parameters:
+//   create_signaled: b8 - Flag indicating whether the fence should be created in a signaled state.
+//   out_fence: ^Vulkan_Fence - Pointer to the Vulkan fence to be created.
 @private
 vk_fence_create :: proc(create_signaled: b8, out_fence: ^Vulkan_Fence) {
     
@@ -24,6 +29,10 @@ vk_fence_create :: proc(create_signaled: b8, out_fence: ^Vulkan_Fence) {
     }
 }
 
+// Destroys a Vulkan fence.
+//
+// Parameters:
+//   fence: ^Vulkan_Fence - Pointer to the Vulkan fence to be destroyed.
 @private
 vk_fence_destroy :: proc(fence: ^Vulkan_Fence) {
     if fence.handle != 0 {
@@ -36,6 +45,14 @@ vk_fence_destroy :: proc(fence: ^Vulkan_Fence) {
     fence.is_signaled = false
 }
 
+// Waits for a Vulkan fence to be signaled.
+//
+// Parameters:
+//   fence: ^Vulkan_Fence - Pointer to the Vulkan fence to wait for.
+//   timeout_ns: u64 - Timeout in nanoseconds.
+//
+// Returns:
+//   b8 - True if the fence was successfully waited for, otherwise false.
 @private
 vk_fence_wait :: proc(fence: ^Vulkan_Fence, timeout_ns: u64) -> b8 {
     if !fence.is_signaled {
@@ -68,6 +85,10 @@ vk_fence_wait :: proc(fence: ^Vulkan_Fence, timeout_ns: u64) -> b8 {
     return false
 }
 
+// Resets a Vulkan fence.
+//
+// Parameters:
+//   fence: ^Vulkan_Fence - Pointer to the Vulkan fence to be reset.
 @private
 vk_fence_reset :: proc(fence: ^Vulkan_Fence) {
     if fence.is_signaled {

@@ -2,6 +2,13 @@ package renderer_vulkan
 
 import vk "vendor:vulkan"
 
+// Converts a Vulkan result code to a string representation and a descriptive message.
+//
+// Parameters:
+//   result: vk.Result - The Vulkan result code.
+//
+// Returns:
+//   (string, string) - A tuple containing the string representation and the descriptive message.
 @private
 vk_result_to_string :: proc(result: vk.Result) -> (string, string) {
     // From: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkResult.html
@@ -84,6 +91,13 @@ vk_result_to_string :: proc(result: vk.Result) -> (string, string) {
     }
 }
 
+// Checks if a Vulkan result code indicates success.
+//
+// Parameters:
+//   result: vk.Result - The Vulkan result code.
+//
+// Returns:
+//   b8 - True if the result code indicates success, otherwise false.
 vk_result_is_success :: proc(result: vk.Result) -> b8 {
     // From: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkResult.html
     #partial switch result {

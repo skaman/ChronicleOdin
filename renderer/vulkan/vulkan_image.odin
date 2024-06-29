@@ -5,6 +5,19 @@ import "core:math"
 
 import vk "vendor:vulkan"
 
+// Creates a Vulkan image.
+//
+// Parameters:
+//   image_type: vk.ImageType - The type of the image.
+//   width: u32 - The width of the image.
+//   height: u32 - The height of the image.
+//   format: vk.Format - The format of the image.
+//   tiling: vk.ImageTiling - The tiling mode of the image.
+//   usage: vk.ImageUsageFlags - The usage flags for the image.
+//   memory_flags: vk.MemoryPropertyFlags - The memory property flags for the image.
+//   create_view: b8 - Flag indicating whether to create an image view.
+//   view_aspect_flags: vk.ImageAspectFlags - The aspect flags for the image view.
+//   out_image: ^Vulkan_Image - Pointer to the Vulkan image to be created.
 @private
 vk_image_create :: proc(image_type: vk.ImageType, width: u32, height: u32, format: vk.Format,
                         tiling: vk.ImageTiling, usage: vk.ImageUsageFlags,
@@ -80,6 +93,12 @@ vk_image_create :: proc(image_type: vk.ImageType, width: u32, height: u32, forma
     }
 }
 
+// Creates a Vulkan image view.
+//
+// Parameters:
+//   image: ^Vulkan_Image - Pointer to the Vulkan image.
+//   format: vk.Format - The format of the image.
+//   aspect_flags: vk.ImageAspectFlags - The aspect flags for the image view.
 @private
 vk_image_view_create :: proc(image: ^Vulkan_Image, format: vk.Format,
                              aspect_flags: vk.ImageAspectFlags) {
@@ -107,6 +126,10 @@ vk_image_view_create :: proc(image: ^Vulkan_Image, format: vk.Format,
     }
 }
 
+// Destroys a Vulkan image.
+//
+// Parameters:
+//   image: ^Vulkan_Image - Pointer to the Vulkan image to be destroyed.
 @private
 vk_image_destroy :: proc(image: ^Vulkan_Image) {
     if image.view != 0 {

@@ -5,25 +5,40 @@ import "core:math"
 
 import vk "vendor:vulkan"
 
+// Struct to specify the requirements for selecting a Vulkan physical device.
 @(private="file")
 Vulkan_Physical_Device_Requirements :: struct {
-    graphics: b8,
-    present: b8,
-    compute: b8,
-    transfer: b8,
-    device_extensions_names: [dynamic]cstring,
-    sampler_anisotropy: b8,
-    discrete_gpu: b8,
+    graphics: b8,                               // Indicates if a graphics queue is required
+    present: b8,                                // Indicates if a present queue is required
+    compute: b8,                                // Indicates if a compute queue is required
+    transfer: b8,                               // Indicates if a transfer queue is required
+    device_extensions_names: [dynamic]cstring,  // List of required device extension names
+    sampler_anisotropy: b8,                     // Indicates if sampler anisotropy is required
+    discrete_gpu: b8,                           // Indicates if a discrete GPU is preferred
 }
 
+// Struct to store the queue family indices of a Vulkan physical device.
 @(private="file")
 Vulkan_Physical_Device_Queue_Family_Info :: struct {
-    graphics_family_index: u32,
-    present_family_index: u32,
-    compute_family_index: u32,
-    transfer_family_index: u32,
+    graphics_family_index: u32,                 // Index of the graphics queue family
+    present_family_index: u32,                  // Index of the present queue family
+    compute_family_index: u32,                  // Index of the compute queue family
+    transfer_family_index: u32,                 // Index of the transfer queue family
 }
 
+// Checks if a Vulkan physical device meets the specified requirements.
+//
+// Parameters:
+//   physical_device: vk.PhysicalDevice - The physical device to check.
+//   surface: vk.SurfaceKHR - The surface to check support for.
+//   properties: ^vk.PhysicalDeviceProperties - Pointer to the device properties.
+//   features: ^vk.PhysicalDeviceFeatures - Pointer to the device features.
+//   requirements: ^Vulkan_Physical_Device_Requirements - Pointer to the device requirements.
+//   out_queue_info: ^Vulkan_Physical_Device_Queue_Family_Info - Pointer to store the queue family indices.
+//   out_swapchain_support: ^Vulkan_Swapchain_Support_Info - Pointer to store the swapchain support info.
+//
+// Returns:
+//   b8 - True if the device meets the requirements, otherwise false.
 @(private="file")
 vk_physical_device_meets_requirements :: proc(physical_device: vk.PhysicalDevice,
                                               surface: vk.SurfaceKHR,
@@ -163,6 +178,13 @@ vk_physical_device_meets_requirements :: proc(physical_device: vk.PhysicalDevice
     return false
 }
 
+// Selects a Vulkan physical device that meets the requirements.
+//
+// Parameters:
+//   surface: vk.SurfaceKHR - The surface to check support for.
+//
+// Returns:
+//   b8 - True if a suitable physical device was found, otherwise false.
 @(private="file")
 vk_select_physical_device :: proc(surface: vk.SurfaceKHR) -> b8 {
     physical_device_count : u32
@@ -269,6 +291,13 @@ vk_select_physical_device :: proc(surface: vk.SurfaceKHR) -> b8 {
     return true
 }
 
+// Creates a Vulkan device.
+//
+// Parameters:
+//   surface: vk.SurfaceKHR - The surface to check support for.
+//
+// Returns:
+//   b8 - True if the device was successfully created, otherwise false.
 @private
 vk_device_create :: proc(surface: vk.SurfaceKHR) -> b8 {
     if !vk_select_physical_device(surface) {
@@ -387,6 +416,7 @@ vk_device_create :: proc(surface: vk.SurfaceKHR) -> b8 {
     return true
 }
 
+// Destroys the Vulkan device.
 @private
 vk_device_destroy :: proc() {
     global_context.device.graphics_queue = nil
@@ -426,6 +456,12 @@ vk_device_destroy :: proc() {
     global_context.device.transfer_queue_index = math.max(u32)
 }
 
+// Queries swapchain support details for a physical device.
+//
+// Parameters:
+//   physical_device: vk.PhysicalDevice - The physical device to query.
+//   surface: vk.SurfaceKHR - The surface to query support for.
+//   out_support: ^Vulkan_Swapchain_Support_Info - Pointer to store the swapchain support info.
 @private
 vk_query_swapchain_support :: proc(physical_device: vk.PhysicalDevice,
                                    surface: vk.SurfaceKHR,
@@ -471,6 +507,13 @@ vk_query_swapchain_support :: proc(physical_device: vk.PhysicalDevice,
     }
 }
 
+// Detects the depth format supported by a Vulkan device.
+//
+// Parameters:
+//   device: ^Vulkan_Device - Pointer to the Vulkan device.
+//
+// Returns:
+//   b8 - True if a suitable depth format was found, otherwise false.
 @private
 vk_device_detect_depth_format :: proc(device: ^Vulkan_Device) -> b8 {
     CANDIDATE_COUNT :: 3

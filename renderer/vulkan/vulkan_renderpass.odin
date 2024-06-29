@@ -6,6 +6,15 @@ import vk "vendor:vulkan"
 
 import "../../mathx"
 
+// Creates a Vulkan render pass.
+//
+// Parameters:
+//   window_context: ^Vulkan_Window_Context - Pointer to the window context.
+//   out_render_pass: ^Vulkan_Render_Pass - Pointer to the render pass to be created.
+//   render_area: mathx.Vector4 - The render area dimensions.
+//   clear_color: mathx.Vector4 - The clear color for the render pass.
+//   depth: f32 - The depth value for clearing the depth buffer.
+//   stencil: u32 - The stencil value for clearing the stencil buffer.
 @private
 vk_render_pass_create :: proc(window_context: ^Vulkan_Window_Context,
                               out_render_pass: ^Vulkan_Render_Pass,
@@ -117,6 +126,10 @@ vk_render_pass_create :: proc(window_context: ^Vulkan_Window_Context,
     }
 }
 
+// Destroys a Vulkan render pass.
+//
+// Parameters:
+//   render_pass: ^Vulkan_Render_Pass - Pointer to the render pass to be destroyed.
 @private
 vk_render_pass_destroy :: proc(render_pass: ^Vulkan_Render_Pass) {
     if render_pass.handle != 0 {
@@ -127,6 +140,12 @@ vk_render_pass_destroy :: proc(render_pass: ^Vulkan_Render_Pass) {
     }
 }
 
+// Begins a Vulkan render pass.
+//
+// Parameters:
+//   command_buffer: ^Vulkan_Command_Buffer - Pointer to the command buffer.
+//   render_pass: ^Vulkan_Render_Pass - Pointer to the render pass.
+//   framebuffer: vk.Framebuffer - The framebuffer to be used.
 @private
 vk_render_pass_begin :: proc(command_buffer: ^Vulkan_Command_Buffer,
                              render_pass: ^Vulkan_Render_Pass,
@@ -156,6 +175,11 @@ vk_render_pass_begin :: proc(command_buffer: ^Vulkan_Command_Buffer,
     render_pass.state = .In_Render_Pass
 }
 
+// Ends a Vulkan render pass.
+//
+// Parameters:
+//   command_buffer: ^Vulkan_Command_Buffer - Pointer to the command buffer.
+//   render_pass: ^Vulkan_Render_Pass - Pointer to the render pass.
 @private
 vk_render_pass_end :: proc(command_buffer: ^Vulkan_Command_Buffer,
                            render_pass: ^Vulkan_Render_Pass) {

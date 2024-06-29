@@ -5,6 +5,13 @@ import "core:math"
 
 import vk "vendor:vulkan"
 
+// Internal function to create a Vulkan swapchain.
+//
+// Parameters:
+//   window_context: ^Vulkan_Window_Context - Pointer to the window context.
+//   width: u32 - The width of the swapchain.
+//   height: u32 - The height of the swapchain.
+//   swapchain: ^Vulkan_Swapchain - Pointer to the swapchain to be created.
 @(private="file")
 vk_swapchain_create_internal :: proc(window_context: ^Vulkan_Window_Context,
                                      width: u32, height: u32, swapchain: ^Vulkan_Swapchain) {
@@ -157,6 +164,11 @@ vk_swapchain_create_internal :: proc(window_context: ^Vulkan_Window_Context,
     log.info("Swapchain created successfully")
 }
 
+// Internal function to destroy a Vulkan swapchain.
+//
+// Parameters:
+//   window_context: ^Vulkan_Window_Context - Pointer to the window context.
+//   swapchain: ^Vulkan_Swapchain - Pointer to the swapchain to be destroyed.
 @(private="file")
 vk_swapchain_destroy_internal :: proc(window_context: ^Vulkan_Window_Context,
                                       swapchain: ^Vulkan_Swapchain) {
@@ -176,12 +188,26 @@ vk_swapchain_destroy_internal :: proc(window_context: ^Vulkan_Window_Context,
     delete(swapchain.image_views)
 }
 
+// Creates a Vulkan swapchain.
+//
+// Parameters:
+//   window_context: ^Vulkan_Window_Context - Pointer to the window context.
+//   width: u32 - The width of the swapchain.
+//   height: u32 - The height of the swapchain.
+//   out_swapchain: ^Vulkan_Swapchain - Pointer to the swapchain to be created.
 @private
 vk_swapchain_create :: proc(window_context: ^Vulkan_Window_Context, width: u32, height: u32,
                             out_swapchain: ^Vulkan_Swapchain) {
     vk_swapchain_create_internal(window_context, width, height, out_swapchain)
 }
 
+// Recreates a Vulkan swapchain.
+//
+// Parameters:
+//   window_context: ^Vulkan_Window_Context - Pointer to the window context.
+//   width: u32 - The width of the swapchain.
+//   height: u32 - The height of the swapchain.
+//   out_swapchain: ^Vulkan_Swapchain - Pointer to the swapchain to be recreated.
 @private
 vk_swapchain_recreate :: proc(window_context: ^Vulkan_Window_Context, width: u32, height: u32,
                               out_swapchain: ^Vulkan_Swapchain) {
@@ -189,11 +215,28 @@ vk_swapchain_recreate :: proc(window_context: ^Vulkan_Window_Context, width: u32
     vk_swapchain_create_internal(window_context, width, height, out_swapchain)
 }
 
+// Destroys a Vulkan swapchain.
+//
+// Parameters:
+//   window_context: ^Vulkan_Window_Context - Pointer to the window context.
+//   swapchain: ^Vulkan_Swapchain - Pointer to the swapchain to be destroyed.
 @private
 vk_swapchain_destroy :: proc(window_context: ^Vulkan_Window_Context, swapchain: ^Vulkan_Swapchain) {
     vk_swapchain_destroy_internal(window_context, swapchain)
 }
 
+// Acquires the next image index from the swapchain.
+//
+// Parameters:
+//   window_context: ^Vulkan_Window_Context - Pointer to the window context.
+//   swapchain: ^Vulkan_Swapchain - Pointer to the swapchain.
+//   timeout_ns: u64 - Timeout in nanoseconds.
+//   image_available_semaphore: vk.Semaphore - Semaphore to signal when the image is available.
+//   fence: vk.Fence - Fence to signal when the image is available.
+//   out_image_index: ^u32 - Pointer to store the acquired image index.
+//
+// Returns:
+//   b8 - True if the image index was successfully acquired, otherwise false.
 @private
 vk_swapchain_acquire_next_image_index :: proc(window_context: ^Vulkan_Window_Context, 
                                               swapchain: ^Vulkan_Swapchain,
@@ -220,6 +263,15 @@ vk_swapchain_acquire_next_image_index :: proc(window_context: ^Vulkan_Window_Con
     return true
 }
 
+// Presents the current image to the swapchain.
+//
+// Parameters:
+//   window_context: ^Vulkan_Window_Context - Pointer to the window context.
+//   swapchain: ^Vulkan_Swapchain - Pointer to the swapchain.
+//   graphics_queue: vk.Queue - The graphics queue.
+//   present_queue: vk.Queue - The presentation queue.
+//   render_complete_semaphore: vk.Semaphore - Semaphore to signal when rendering is complete.
+//   present_image_index: u32 - The index of the image to present.
 @private
 vk_swapchain_present :: proc(window_context: ^Vulkan_Window_Context, 
                              swapchain: ^Vulkan_Swapchain,
