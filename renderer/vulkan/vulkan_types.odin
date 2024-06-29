@@ -72,6 +72,13 @@ Vulkan_Render_Pass :: struct {
 }
 
 @private
+Vulkan_Frame_Buffer :: struct {
+    handle: vk.Framebuffer,
+    attachments: []vk.ImageView,
+    render_pass: ^Vulkan_Render_Pass,
+}
+
+@private
 Vulkan_Swapchain :: struct {
     image_format: vk.SurfaceFormatKHR,
     max_frames_in_flight: u8,
@@ -80,6 +87,9 @@ Vulkan_Swapchain :: struct {
     image_views: []vk.ImageView,
 
     depth_attachment: Vulkan_Image,
+
+    // framebuffers used for on-screen rendering
+    frame_buffers: []Vulkan_Frame_Buffer,
 }
 
 @private
@@ -107,18 +117,31 @@ Vulkan_Swapchain_Support_Info :: struct {
 }
 
 @private
+Vulkan_Fence :: struct {
+    handle: vk.Fence,
+    is_signaled: b8,
+}
+
+@private
 Vulkan_Window_Context :: struct {
     instance: platform.Instance,
     handle: platform.Handle,
     surface: vk.SurfaceKHR,
 
-    framebuffer_width: u32,
-    framebuffer_height: u32,
+    frame_buffer_width: u32,
+    frame_buffer_height: u32,
 
     swapchain: Vulkan_Swapchain,
-    main_renderpass: Vulkan_Render_Pass,
+    main_render_pass: Vulkan_Render_Pass,
 
     graphics_command_buffers: []Vulkan_Command_Buffer,
+    image_available_semaphores: []vk.Semaphore,
+    queue_complete_semaphores: []vk.Semaphore,
+
+    in_flight_fences: []Vulkan_Fence,
+
+    // Hold pointers to fences which exist and are owned elsewhere
+    images_in_flight: []^Vulkan_Fence,
 
     image_index: u32,
     current_frame: u32,

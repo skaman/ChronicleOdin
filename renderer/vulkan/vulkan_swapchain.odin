@@ -207,8 +207,8 @@ vk_swapchain_acquire_next_image_index :: proc(window_context: ^Vulkan_Window_Con
                                      out_image_index)
     if result == vk.Result.ERROR_OUT_OF_DATE_KHR {
         // Trigger swapchain recreation, then boot out of the render loop
-        vk_swapchain_recreate(window_context, window_context.framebuffer_width,
-                              window_context.framebuffer_height, swapchain)
+        vk_swapchain_recreate(window_context, window_context.frame_buffer_width,
+                              window_context.frame_buffer_height, swapchain)
         return false
     } else if result != vk.Result.SUCCESS && result != vk.Result.SUBOPTIMAL_KHR {
         log.errorf("Failed to acquire next image index: %v", result)
@@ -241,9 +241,13 @@ vk_swapchain_present :: proc(window_context: ^Vulkan_Window_Context,
     result := vk.QueuePresentKHR(present_queue, &present_info)
     if result == vk.Result.ERROR_OUT_OF_DATE_KHR || result == vk.Result.SUBOPTIMAL_KHR {
         // Trigger swapchain recreation, then boot out of the render loop
-        vk_swapchain_recreate(window_context, window_context.framebuffer_width,
-                              window_context.framebuffer_height, swapchain)
+        vk_swapchain_recreate(window_context, window_context.frame_buffer_width,
+                              window_context.frame_buffer_height, swapchain)
     } else if result != vk.Result.SUCCESS {
         log.errorf("Failed to present image: %v", result)
     }
+
+    // Increment (and loop) the index.
+    window_context.current_frame = (window_context.current_frame + 1) %
+                                    u32(swapchain.max_frames_in_flight)
 }

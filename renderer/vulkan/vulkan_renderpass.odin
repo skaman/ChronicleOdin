@@ -7,11 +7,11 @@ import vk "vendor:vulkan"
 import "../../mathx"
 
 @private
-vk_renderpass_create :: proc(window_context: ^Vulkan_Window_Context,
-                             out_renderpass: ^Vulkan_Render_Pass,
-                             render_area: mathx.Vector4,
-                             clear_color: mathx.Vector4,
-                             depth: f32, stencil: u32) {
+vk_render_pass_create :: proc(window_context: ^Vulkan_Window_Context,
+                              out_render_pass: ^Vulkan_Render_Pass,
+                              render_area: mathx.Vector4,
+                              clear_color: mathx.Vector4,
+                              depth: f32, stencil: u32) {
     // Main subpass
     subpass := vk.SubpassDescription{
         pipelineBindPoint = .GRAPHICS,
@@ -90,7 +90,7 @@ vk_renderpass_create :: proc(window_context: ^Vulkan_Window_Context,
     }
 
     // Render pass create info
-    renderpass_create_info := vk.RenderPassCreateInfo{
+    render_pass_create_info := vk.RenderPassCreateInfo{
         sType = .RENDER_PASS_CREATE_INFO,
         attachmentCount = attachment_description_count,
         pAttachments = &attachment_descriptions[0],
@@ -103,9 +103,9 @@ vk_renderpass_create :: proc(window_context: ^Vulkan_Window_Context,
     }
 
     result := vk.CreateRenderPass(global_context.device.logical_device,
-                                  &renderpass_create_info,
+                                  &render_pass_create_info,
                                   global_context.allocator,
-                                  &out_renderpass.handle)
+                                  &out_render_pass.handle)
     if result != .SUCCESS {
         log.error("Failed to create render pass")
         return
@@ -113,47 +113,47 @@ vk_renderpass_create :: proc(window_context: ^Vulkan_Window_Context,
 }
 
 @private
-vk_renderpass_destroy :: proc(renderpass: ^Vulkan_Render_Pass) {
-    if renderpass.handle != 0 {
+vk_render_pass_destroy :: proc(render_pass: ^Vulkan_Render_Pass) {
+    if render_pass.handle != 0 {
         vk.DestroyRenderPass(global_context.device.logical_device,
-                             renderpass.handle,
+                             render_pass.handle,
                              global_context.allocator)
-        renderpass.handle = 0
+        render_pass.handle = 0
     }
 }
 
 @private
-vk_renderpass_begin :: proc(command_buffer: ^Vulkan_Command_Buffer,
-                            renderpass: ^Vulkan_Render_Pass,
-                            framebuffer: vk.Framebuffer) {
+vk_render_pass_begin :: proc(command_buffer: ^Vulkan_Command_Buffer,
+                             render_pass: ^Vulkan_Render_Pass,
+                             framebuffer: vk.Framebuffer) {
 
     clear_values := [2]vk.ClearValue{
-        vk.ClearValue{color = vk.ClearColorValue{float32 = ([4]f32)(renderpass.clear_color)}},
-        vk.ClearValue{depthStencil = vk.ClearDepthStencilValue{depth = renderpass.depth,
-                                                               stencil = renderpass.stencil}},
+        vk.ClearValue{color = vk.ClearColorValue{float32 = ([4]f32)(render_pass.clear_color)}},
+        vk.ClearValue{depthStencil = vk.ClearDepthStencilValue{depth = render_pass.depth,
+                                                               stencil = render_pass.stencil}},
     }
 
     begin_info := vk.RenderPassBeginInfo{
         sType = .RENDER_PASS_BEGIN_INFO,
-        renderPass = renderpass.handle,
+        renderPass = render_pass.handle,
         framebuffer = framebuffer,
         renderArea = vk.Rect2D{
-            offset = vk.Offset2D{i32(renderpass.render_area.x),
-                                 i32(renderpass.render_area.y)},
-            extent = vk.Extent2D{u32(renderpass.render_area.z),
-                                 u32(renderpass.render_area.w)},
+            offset = vk.Offset2D{i32(render_pass.render_area.x),
+                                 i32(render_pass.render_area.y)},
+            extent = vk.Extent2D{u32(render_pass.render_area.z),
+                                 u32(render_pass.render_area.w)},
         },
         clearValueCount = 2,
         pClearValues = &clear_values[0],
     }
 
     vk.CmdBeginRenderPass(command_buffer.handle, &begin_info, .INLINE)
-    renderpass.state = .In_Render_Pass
+    render_pass.state = .In_Render_Pass
 }
 
 @private
-vk_renderpass_end :: proc(command_buffer: ^Vulkan_Command_Buffer,
-                          renderpass: ^Vulkan_Render_Pass) {
+vk_render_pass_end :: proc(command_buffer: ^Vulkan_Command_Buffer,
+                           render_pass: ^Vulkan_Render_Pass) {
     vk.CmdEndRenderPass(command_buffer.handle)
-    renderpass.state = .Recording
+    render_pass.state = .Recording
 }

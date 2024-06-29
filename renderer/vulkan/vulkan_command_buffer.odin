@@ -42,13 +42,13 @@ vk_command_buffer_free :: proc(pool: vk.CommandPool, command_buffer: ^Vulkan_Com
 @private
 vk_command_buffer_begin :: proc(command_buffer: ^Vulkan_Command_Buffer,
                                 is_single_use: b8,
-                                is_renderpass_continue: b8,
+                                is_render_pass_continue: b8,
                                 is_simultaneous_use: b8) {
     flags: vk.CommandBufferUsageFlags;
     if is_single_use {
         flags |= {.ONE_TIME_SUBMIT}
     }
-    if is_renderpass_continue {
+    if is_render_pass_continue {
         flags |= {.RENDER_PASS_CONTINUE}
     }
     if is_simultaneous_use {

@@ -8,22 +8,33 @@ import "ecs"
 import "platform"
 import "renderer"
 
+Window_State :: struct {
+    x, y: i32,
+    width, height: u32,
+    window_id: platform.Window_Id,
+    window_context_id: renderer.Window_Context_Id,
+    is_fullscreen: bool,
+    is_destroyed: bool,
+}
 
 worker :: proc(t: ^thread.Thread) {
-    window_ids := make(map[platform.Window_Id]bool)
-    defer delete(window_ids)
+    //window_ids := make(map[platform.Window_Id]bool)
+    //defer delete(window_ids)
+    //
+    //window_contexts := make(map[platform.Window_Id]renderer.Window_Context_Id)
+    //defer delete(window_contexts)
+    //
+    //window_fullscreen := make(map[platform.Window_Id]bool)
+    //defer delete(window_fullscreen)
 
-    window_contexts := make(map[platform.Window_Id]renderer.Window_Context_Id)
-    defer delete(window_contexts)
-
-    window_fullscreen := make(map[platform.Window_Id]bool)
-    defer delete(window_fullscreen)
+    windows := make(map[platform.Window_Id]Window_State)
+    defer delete(windows)
 
     for i in 0..<4 {
         x := i < 2 ? 100 : 900
         y := i % 2 == 0 ? 100 : 700
         window_id := platform.create_window({"Chronicle", i32(x), i32(y), 800, 600})
-        window_ids[window_id] = true
+        windows[window_id] = {window_id = window_id}
     }
 
 
@@ -33,24 +44,49 @@ worker :: proc(t: ^thread.Thread) {
                 case platform.Window_Close_Requested_Event:
                     window_id := event.(platform.Window_Close_Requested_Event).window_id
                     platform.destroy_window(window_id)
-                    window_ids[window_id] = false
+                    
+                    window := windows[window_id]
+                    window.is_destroyed = true
+                    windows[window_id] = window
+
                 case platform.Window_Created_Event:
                     window_created_event := event.(platform.Window_Created_Event)
-                    log.infof("Window created: %v", window_created_event)
-                    window_context_id, _ := renderer.init_window(window_created_event.instance, window_created_event.handle)
-                    window_contexts[window_created_event.window_id] = window_context_id
+                    //log.infof("Window created: %v", window_created_event)
+                    
+                    window := windows[window_created_event.window_id]
+                    window_context_id, _ := renderer.init_window(window_created_event.instance,
+                                                                 window_created_event.handle,
+                                                                 window.width, window.height)
+                    window.window_context_id = window_context_id
+                    windows[window_created_event.window_id] = window
+
                 case platform.Window_Destroyed_Event:
                     window_destroyed_event := event.(platform.Window_Destroyed_Event)
-                    log.infof("Window destroyed: %v", window_destroyed_event)
-                    renderer.destroy_window(window_contexts[window_destroyed_event.window_id])
-                    delete_key(&window_ids, window_destroyed_event.window_id)
-                    delete_key(&window_contexts, window_destroyed_event.window_id)
+                    //log.infof("Window destroyed: %v", window_destroyed_event)
+                    
+                    window := windows[window_destroyed_event.window_id]
+                    renderer.destroy_window(window.window_context_id)
+                    delete_key(&windows, window_destroyed_event.window_id)
+
                 case platform.Window_Moved_Event:
                     window_move_event := event.(platform.Window_Moved_Event)
-                    log.infof("Window moved: %v", window_move_event)
+                    //log.infof("Window moved: %v", window_move_event)
+
                 case platform.Window_Resized_Event:
                     window_resized_event := event.(platform.Window_Resized_Event)
-                    log.infof("Window resized: %v", window_resized_event)
+                    //log.infof("Window resized: %v", window_resized_event)
+
+                    window := windows[window_resized_event.window_id]
+                    window.width = u32(window_resized_event.width)
+                    window.height = u32(window_resized_event.height)
+                    // TODO: we need to resize the renderer here?
+                    if window.window_context_id != 0 {
+                        renderer.resize_window(window.window_context_id,
+                                               u32(window_resized_event.width),
+                                               u32(window_resized_event.height))
+                    }
+                    windows[window_resized_event.window_id] = window
+
                 case platform.Key_Event:
                     key_event := event.(platform.Key_Event)
                     log.infof("Key event: %v", key_event)
@@ -63,8 +99,10 @@ worker :: proc(t: ^thread.Thread) {
                             platform.set_window_title(key_event.window_id, "New Title")
                         case .Key_F:
                             if key_event.pressed {
-                                platform.set_window_fullscreen(key_event.window_id, !window_fullscreen[key_event.window_id])
-                                window_fullscreen[key_event.window_id] = !window_fullscreen[key_event.window_id]
+                                window := windows[key_event.window_id]
+                                window.is_fullscreen = !window.is_fullscreen
+                                platform.set_window_fullscreen(key_event.window_id, window.is_fullscreen)
+                                windows[key_event.window_id] = window
                             }
                         case:
                     }
@@ -87,8 +125,8 @@ worker :: proc(t: ^thread.Thread) {
         }
 
         all_closed := true
-        for _, value in window_ids {
-            if value {
+        for _, window in windows {
+            if !window.is_destroyed {
                 all_closed = false
                 break
             }
@@ -101,9 +139,8 @@ worker :: proc(t: ^thread.Thread) {
         thread.yield()
     }
 
-    for window_id in window_ids {
-        window_context_id := window_contexts[window_id]
-        renderer.destroy_window(window_context_id)
+    for _, window in windows {
+        renderer.destroy_window(window.window_context_id)
     }
 }
 
