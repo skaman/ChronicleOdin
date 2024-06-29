@@ -12,6 +12,11 @@ vk_render_pass_create :: proc(window_context: ^Vulkan_Window_Context,
                               render_area: mathx.Vector4,
                               clear_color: mathx.Vector4,
                               depth: f32, stencil: u32) {
+    out_render_pass.render_area = render_area
+    out_render_pass.clear_color = clear_color
+    out_render_pass.depth = depth
+    out_render_pass.stencil = stencil
+                                
     // Main subpass
     subpass := vk.SubpassDescription{
         pipelineBindPoint = .GRAPHICS,

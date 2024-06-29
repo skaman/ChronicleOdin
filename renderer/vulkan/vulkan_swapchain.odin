@@ -160,6 +160,8 @@ vk_swapchain_create_internal :: proc(window_context: ^Vulkan_Window_Context,
 @(private="file")
 vk_swapchain_destroy_internal :: proc(window_context: ^Vulkan_Window_Context,
                                       swapchain: ^Vulkan_Swapchain) {
+    vk.DeviceWaitIdle(global_context.device.logical_device)
+
     vk_image_destroy(&swapchain.depth_attachment)
 
     // Only destroys the image views, the images are destroyed with the swapchain

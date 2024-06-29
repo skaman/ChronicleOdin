@@ -128,8 +128,16 @@ Vulkan_Window_Context :: struct {
     handle: platform.Handle,
     surface: vk.SurfaceKHR,
 
-    frame_buffer_width: u32,
-    frame_buffer_height: u32,
+    frame_buffer_width: u32,                // The frame buffer current width
+    frame_buffer_height: u32,               // The frame buffer current height
+    frame_buffer_size_generation: u32,      // Current generation of the frame buffer size. If it
+                                            // doesn't match frame_buffer_size_last_generation, a
+                                            // new  one should be generated
+    frame_buffer_new_width: u32,            // The new width of the frame buffer (for regeneration)
+    frame_buffer_new_height: u32,           // The new height of the frame buffer (for regeneration)
+    frame_buffer_size_last_generation: u32, // The gemeration of the frame buffer when it wast last
+                                            // created. Set to frame_buffer_size_generation when
+                                            // updated.
 
     swapchain: Vulkan_Swapchain,
     main_render_pass: Vulkan_Render_Pass,
@@ -140,11 +148,12 @@ Vulkan_Window_Context :: struct {
 
     in_flight_fences: []Vulkan_Fence,
 
-    // Hold pointers to fences which exist and are owned elsewhere
-    images_in_flight: []^Vulkan_Fence,
+    
+    images_in_flight: []^Vulkan_Fence,      // Hold pointers to fences which exist and are owned
+                                            // elsewhere
 
     image_index: u32,
     current_frame: u32,
 
-    recreate_swapchain: b8,
+    recreating_swapchain: b8,
 }

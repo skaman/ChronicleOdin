@@ -15,18 +15,10 @@ Window_State :: struct {
     window_context_id: renderer.Window_Context_Id,
     is_fullscreen: bool,
     is_destroyed: bool,
+    is_created: bool,
 }
 
 worker :: proc(t: ^thread.Thread) {
-    //window_ids := make(map[platform.Window_Id]bool)
-    //defer delete(window_ids)
-    //
-    //window_contexts := make(map[platform.Window_Id]renderer.Window_Context_Id)
-    //defer delete(window_contexts)
-    //
-    //window_fullscreen := make(map[platform.Window_Id]bool)
-    //defer delete(window_fullscreen)
-
     windows := make(map[platform.Window_Id]Window_State)
     defer delete(windows)
 
@@ -58,6 +50,7 @@ worker :: proc(t: ^thread.Thread) {
                                                                  window_created_event.handle,
                                                                  window.width, window.height)
                     window.window_context_id = window_context_id
+                    window.is_created = true
                     windows[window_created_event.window_id] = window
 
                 case platform.Window_Destroyed_Event:
@@ -128,7 +121,11 @@ worker :: proc(t: ^thread.Thread) {
         for _, window in windows {
             if !window.is_destroyed {
                 all_closed = false
-                break
+                //break
+
+                if window.is_created && renderer.begin_frame(window.window_context_id, 0.0) {
+                    renderer.end_frame(window.window_context_id, 0.0)
+                }
             }
         }
 

@@ -19,9 +19,8 @@ Renderer_Backend :: struct {
     destroy_window: proc(window_context_id: u32),
     resize_window: proc(window_context_id: u32, width: u32, height: u32),
 
-    resize: proc(width: i32, height: i32),
-    begin_frame: proc(delta_time: f32) -> b8,
-    end_frame: proc(delta_time: f32) -> b8,
+    begin_frame: proc(window_context_id: u32, delta_time: f32) -> b8,
+    end_frame: proc(window_context_id: u32, delta_time: f32) -> b8,
 }
 
 @(private="file")
@@ -35,7 +34,6 @@ init :: proc(backend: Renderer_Backend_Type, app_name: string) -> b8 {
             global_renderer_backend.init_window = vulkan.init_window
             global_renderer_backend.destroy_window = vulkan.destroy_window
             global_renderer_backend.resize_window = vulkan.resize_window
-            global_renderer_backend.resize = vulkan.resize
             global_renderer_backend.begin_frame = vulkan.begin_frame
             global_renderer_backend.end_frame = vulkan.end_frame
     }
@@ -61,14 +59,10 @@ resize_window :: proc(window_context_id: Window_Context_Id, width: u32, height: 
     global_renderer_backend.resize_window(u32(window_context_id), width, height)
 }
 
-resize :: proc(width: i32, height: i32) {
-    global_renderer_backend.resize(width, height)
+begin_frame :: proc(window_context_id: Window_Context_Id, delta_time: f32) -> b8 {
+    return global_renderer_backend.begin_frame(u32(window_context_id), delta_time)
 }
 
-begin_frame :: proc(delta_time: f32) -> b8 {
-    return global_renderer_backend.begin_frame(delta_time)
-}
-
-end_frame :: proc(delta_time: f32) -> b8 {
-    return global_renderer_backend.end_frame(delta_time)
+end_frame :: proc(window_context_id: Window_Context_Id, delta_time: f32) -> b8 {
+    return global_renderer_backend.end_frame(u32(window_context_id), delta_time)
 }

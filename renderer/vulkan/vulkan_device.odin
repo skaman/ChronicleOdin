@@ -442,6 +442,10 @@ vk_query_swapchain_support :: proc(physical_device: vk.PhysicalDevice,
         log.errorf("Failed to get surface formats count: %v", result)
         return
     }
+    
+    if out_support.surface_formats != nil {
+        delete(out_support.surface_formats)
+    }
     out_support.surface_formats = make([]vk.SurfaceFormatKHR, format_count)
     result = vk.GetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, raw_data(out_support.surface_formats))
     if result != vk.Result.SUCCESS {
@@ -454,6 +458,10 @@ vk_query_swapchain_support :: proc(physical_device: vk.PhysicalDevice,
     if result != vk.Result.SUCCESS {
         log.errorf("Failed to get present modes count: %v", result)
         return
+    }
+    
+    if out_support.present_modes != nil {
+        delete(out_support.present_modes)
     }
     out_support.present_modes = make([]vk.PresentModeKHR, present_mode_count)
     result = vk.GetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, raw_data(out_support.present_modes))
