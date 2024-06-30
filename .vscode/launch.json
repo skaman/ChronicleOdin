@@ -8,7 +8,7 @@
             "name": "Debug",
             "program": "${workspaceFolder}/bin/chronicle_debug.exe",
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}/bin"
         }
     ]
 }

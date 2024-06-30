@@ -4,8 +4,11 @@ import "core:strings"
 import "core:log"
 import "base:runtime"
 import "core:math"
+import "core:mem"
 
 import vk "vendor:vulkan"
+
+import rt "../types"
 
 import "../../platform"
 import "../../utils"
@@ -14,10 +17,6 @@ import "../../mathx"
 // Contains the global context for Vulkan, including Vulkan instance and debug context.
 @private
 global_context : Vulkan_Context
-
-// Contains a global list of Vulkan window contexts.
-@(private="file")
-global_window_contexts : utils.Free_List(Vulkan_Window_Context)
 
 // Callback function for Vulkan debug utils messenger.
 //
@@ -74,6 +73,24 @@ vk_find_memory_index :: proc(type_filter: u32, property_flags: vk.MemoryProperty
 
     log.warn("Failed to find suitable memory type")
     return math.max(u32)
+}
+
+@(private="file")
+vk_upload_data_range :: proc(pool: vk.CommandPool, fence: vk.Fence, queue: vk.Queue,
+                             buffer: ^Vulkan_Buffer, offset: u64, size: u64, data: rawptr) {
+    // Create a host-visible staging buffer to upload to. Mark it as the source of the transfer.
+    flags: vk.MemoryPropertyFlags = {.HOST_VISIBLE, .HOST_COHERENT}
+    staging: Vulkan_Buffer
+    vk_buffer_create(size, {.TRANSFER_SRC}, flags, true, &staging)
+
+    // Load the data into the staging buffer
+    vk_buffer_load_data(&staging, 0, size, {}, data)
+
+    // Perform the copy from staging to the device local buffer
+    vk_buffer_copy_to(pool, fence, queue, staging.handle, 0, buffer.handle, offset, size)
+
+    // Cleanup the staging buffer
+    vk_buffer_destroy(&staging)
 }
 
 // Creates Vulkan command buffers for a given window context.
@@ -237,6 +254,7 @@ vk_recreate_swapchain :: proc(window_context: ^Vulkan_Window_Context) -> b8 {
 //
 // Returns:
 //   b8 - True if the buffers were successfully created, otherwise false.
+@(private="file")
 vk_create_buffers :: proc(window_context: ^Vulkan_Window_Context) -> b8 {
     memory_property_flags: vk.MemoryPropertyFlags = {.DEVICE_LOCAL}
 
@@ -273,8 +291,6 @@ vk_create_buffers :: proc(window_context: ^Vulkan_Window_Context) -> b8 {
 // Returns:
 //   b8 - True if initialization was successful, otherwise false.
 init :: proc(app_name: string) -> b8 {
-    utils.init_free_list(&global_window_contexts)
-
     vulkan_handle := platform.load_module(VULKAN_LIBRARY_NAME)
     if vulkan_handle == nil {
         log.error("Failed to load Vulkan library")
@@ -420,8 +436,6 @@ destroy :: proc() {
 
     vk.DestroyInstance(global_context.instance, global_context.allocator)
     log.debug("Vulkan instance destroyed")
-
-    utils.destroy_free_list(&global_window_contexts)
 }
 
 // Initializes a Vulkan window context.
@@ -433,17 +447,19 @@ destroy :: proc() {
 //   height: u32 - The initial height of the window.
 //
 // Returns:
-//   (u32, b8) - The window context ID and a boolean indicating success or failure.
+//   (rt.Window_Context_Handle, b8) - The window context ID and a boolean indicating success or failure.
 init_window :: proc(instance: platform.Instance, handle: platform.Handle,
-                    width: u32, height: u32) -> (u32, b8) {
-    window_context := Vulkan_Window_Context{
+                    width: u32, height: u32) -> (rt.Window_Context_Handle, b8) {
+    window_context, _ := mem.new(Vulkan_Window_Context)
+    
+    window_context^ = {
         instance = instance,
         handle = handle,
         frame_buffer_width = width,
         frame_buffer_height = height,
     }
 
-    if !vk_platform_create_vulkan_surface(&window_context) {
+    if !vk_platform_create_vulkan_surface(window_context) {
         log.error("Failed to create Vulkan surface")
         return {}, false
     }
@@ -457,11 +473,11 @@ init_window :: proc(instance: platform.Instance, handle: platform.Handle,
     }
 
     // Swapchain creation
-    vk_swapchain_create(&window_context, window_context.frame_buffer_width,
+    vk_swapchain_create(window_context, window_context.frame_buffer_width,
                         window_context.frame_buffer_height, &window_context.swapchain)
 
     // Render pass creation
-    vk_render_pass_create(&window_context, &window_context.main_render_pass,
+    vk_render_pass_create(window_context, &window_context.main_render_pass,
                           mathx.Vector4{0, 0, f32(window_context.frame_buffer_width),
                                               f32(window_context.frame_buffer_height)},
                           mathx.Vector4{0, 0, 0.2, 1},
@@ -470,12 +486,12 @@ init_window :: proc(instance: platform.Instance, handle: platform.Handle,
     // Swapachain framebuffers
     window_context.swapchain.frame_buffers = make([]Vulkan_Frame_Buffer,
                                                   len(window_context.swapchain.images))
-    vk_regenerate_frame_buffers(&window_context,
+    vk_regenerate_frame_buffers(window_context,
                                 &window_context.swapchain,
                                 &window_context.main_render_pass)
 
     // Create command buffers
-    vk_create_command_buffers(&window_context)
+    vk_create_command_buffers(window_context)
 
     // Create sync objects
     window_context.image_available_semaphores = make([]vk.Semaphore,
@@ -522,27 +538,61 @@ init_window :: proc(instance: platform.Instance, handle: platform.Handle,
     window_context.images_in_flight = make([]^Vulkan_Fence, len(window_context.swapchain.images))
 
     // Create builtin shaders
-    if !vk_object_shader_create(&window_context, &window_context.object_shader) {
+    if !vk_object_shader_create(window_context, &window_context.object_shader) {
         log.error("Failed to create object shader")
         return {}, false
     }
 
-    if !vk_create_buffers(&window_context) {
+    if !vk_create_buffers(window_context) {
         log.error("Failed to create buffers")
         return {}, false
     }
 
+    // TODO: temporary test code
+    VERT_COUNT :: u32(4)
+    verts: [VERT_COUNT]mathx.Vector3
+    verts[0] = mathx.Vector3{0, -0.5, 0}
+    verts[1] = mathx.Vector3{0.5, 0.5, 0}
+    verts[2] = mathx.Vector3{0, 0.5, 0}
+    verts[3] = mathx.Vector3{0.5, -0.5, 0}
+
+    INDEX_COUNT :: u32(6)
+    indices: [INDEX_COUNT]u32
+    indices[0] = 0
+    indices[1] = 1
+    indices[2] = 2
+    indices[3] = 0
+    indices[4] = 3
+    indices[5] = 1
+
+    vk_upload_data_range(global_context.device.graphics_command_pool,
+                         0,
+                         global_context.device.graphics_queue,
+                         &window_context.object_vertex_buffer,
+                         0,
+                         size_of(verts),
+                         raw_data(&verts))
+
+    vk_upload_data_range(global_context.device.graphics_command_pool,
+                         0,
+                         global_context.device.graphics_queue,
+                         &window_context.object_index_buffer,
+                         0,
+                         size_of(indices),
+                         raw_data(&indices))
+    // TODO: end temporary test code
+
     log.info("Vulkan window initialized successfully")
 
-    return utils.add_to_free_list(&global_window_contexts, window_context), true
+    return rt.Window_Context_Handle(window_context), true
 }
 
 // Destroys a Vulkan window context.
 //
 // Parameters:
-//   window_context_id: u32 - The ID of the window context to destroy.
-destroy_window :: proc(window_context_id: u32) {
-    window_context := utils.get_from_free_list(&global_window_contexts, window_context_id)
+//   window_context_handle: rt.Window_Context_Handle - The ID of the window context to destroy.
+destroy_window :: proc(window_context_handle: rt.Window_Context_Handle) {
+    window_context := (^Vulkan_Window_Context)(window_context_handle)
 
     vk.DeviceWaitIdle(global_context.device.logical_device)
 
@@ -601,18 +651,18 @@ destroy_window :: proc(window_context_id: u32) {
     // Destroy Vulkan surface
     vk.DestroySurfaceKHR(global_context.instance, window_context.surface, global_context.allocator)
 
-    utils.remove_from_free_list(&global_window_contexts, window_context_id)
+    mem.free(window_context)
     log.debug("Vulkan surface destroyed")
 }
 
 // Resizes a Vulkan window context.
 //
 // Parameters:
-//   window_context_id: u32 - The ID of the window context to resize.
+//   window_context_handle: rt.Window_Context_Handle - The ID of the window context to resize.
 //   width: u32 - The new width of the window.
 //   height: u32 - The new height of the window.
-resize_window :: proc(window_context_id: u32, width: u32, height: u32) {
-    window_context := utils.get_from_free_list(&global_window_contexts, window_context_id)
+resize_window :: proc(window_context_handle: rt.Window_Context_Handle, width: u32, height: u32) {
+    window_context := (^Vulkan_Window_Context)(window_context_handle)
 
     // Update the "frame buffer size generation", a counter which indicates when the
     // frame buffer size has changed. This is used to determine when to regenerate the frame
@@ -628,13 +678,13 @@ resize_window :: proc(window_context_id: u32, width: u32, height: u32) {
 // Begins a new frame for the given window context.
 //
 // Parameters:
-//   window_context_id: u32 - The ID of the window context.
+//   window_context_handle: rt.Window_Context_Handle - The ID of the window context.
 //   delta_time: f32 - The time elapsed since the last frame.
 //
 // Returns:
 //   b8 - True if the frame was successfully begun, otherwise false.
-begin_frame :: proc(window_context_id: u32, delta_time: f32) -> b8 {
-    window_context := utils.get_from_free_list(&global_window_contexts, window_context_id)
+begin_frame :: proc(window_context_handle: rt.Window_Context_Handle, delta_time: f32) -> b8 {
+    window_context := (^Vulkan_Window_Context)(window_context_handle)
     device := &global_context.device
 
     // Check if recreating swap chain and boot out.
@@ -720,19 +770,29 @@ begin_frame :: proc(window_context_id: u32, delta_time: f32) -> b8 {
     vk_render_pass_begin(command_buffer, &window_context.main_render_pass,
                          window_context.swapchain.frame_buffers[window_context.image_index].handle)
 
+    // TODO: temporary test code
+    vk_object_shader_use(window_context, &window_context.object_shader)
+    vk_pipeline_bind(command_buffer, .GRAPHICS, &window_context.object_shader.pipeline)
+
+    offsets: [1]vk.DeviceSize
+    vk.CmdBindVertexBuffers(command_buffer.handle, 0, 1, &window_context.object_vertex_buffer.handle, &offsets[0])
+    vk.CmdBindIndexBuffer(command_buffer.handle, window_context.object_index_buffer.handle, 0, .UINT32)
+    vk.CmdDrawIndexed(command_buffer.handle, 6, 1, 0, 0, 0)
+    // TODO: end temporary test code
+
     return true
 }
 
 // Ends the current frame for the given window context.
 //
 // Parameters:
-//   window_context_id: u32 - The ID of the window context.
+//   window_context_handle: rt.Window_Context_Handle - The ID of the window context.
 //   delta_time: f32 - The time elapsed since the last frame.
 //
 // Returns:
 //   b8 - True if the frame was successfully ended, otherwise false.
-end_frame :: proc(window_context_id: u32, delta_time: f32) -> b8 {
-    window_context := utils.get_from_free_list(&global_window_contexts, window_context_id)
+end_frame :: proc(window_context_handle: rt.Window_Context_Handle, delta_time: f32) -> b8 {
+    window_context := (^Vulkan_Window_Context)(window_context_handle)
     command_buffer := &window_context.graphics_command_buffers[window_context.image_index]
 
     // End render pass

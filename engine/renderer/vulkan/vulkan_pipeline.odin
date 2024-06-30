@@ -6,6 +6,21 @@ import vk "vendor:vulkan"
 
 import "../../mathx"
 
+// Create a Vulkan graphics pipeline.
+//
+// Parameters:
+//   renderpass: Vulkan render pass.
+//   attributes: Vertex input attributes.
+//   descriptor_set_layouts: Descriptor set layouts.
+//   stages: Shader stages.
+//   viewport: Viewport.
+//   scissor: Scissor.
+//   is_wireframe: Indicates if the pipeline is wireframe.
+//   out_pipeline: Vulkan pipeline.
+//
+// Returns:
+//   True if the pipeline was created successfully, false otherwise.
+@private
 vk_graphics_pipeline_create :: proc(renderpass: ^Vulkan_Render_Pass,
                                     attributes: []vk.VertexInputAttributeDescription,
                                     descriptor_set_layouts: []vk.DescriptorSetLayout,
@@ -122,8 +137,8 @@ vk_graphics_pipeline_create :: proc(renderpass: ^Vulkan_Render_Pass,
     // Pipeline layout
     pipeline_layout_create_info := vk.PipelineLayoutCreateInfo{
         sType = .PIPELINE_LAYOUT_CREATE_INFO,
-        setLayoutCount = u32(len(descriptor_set_layouts)),
-        pSetLayouts = &descriptor_set_layouts[0],
+        setLayoutCount = 0, // u32(len(descriptor_set_layouts)),
+        pSetLayouts = nil, // &descriptor_set_layouts[0],
         pushConstantRangeCount = 0,
         pPushConstantRanges = nil,
     }
@@ -173,6 +188,11 @@ vk_graphics_pipeline_create :: proc(renderpass: ^Vulkan_Render_Pass,
     return true
 }
 
+// Destroy a Vulkan pipeline.
+//
+// Parameters:
+//   pipeline: Vulkan pipeline.
+@private
 vk_pipeline_destroy :: proc(pipeline: ^Vulkan_Pipeline) {
     if pipeline.handle != 0 {
         vk.DestroyPipeline(global_context.device.logical_device,
@@ -189,6 +209,13 @@ vk_pipeline_destroy :: proc(pipeline: ^Vulkan_Pipeline) {
     }
 }
 
+// Bind a Vulkan pipeline.
+//
+// Parameters:
+//   command_buffer: Vulkan command buffer.
+//   bind_point: Pipeline bind point.
+//   pipeline: Vulkan pipeline.
+@private
 vk_pipeline_bind :: proc(command_buffer: ^Vulkan_Command_Buffer,
                          bind_point: vk.PipelineBindPoint,
                          pipeline: ^Vulkan_Pipeline) {

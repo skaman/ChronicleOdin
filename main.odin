@@ -7,12 +7,13 @@ import "core:thread"
 import "engine/ecs"
 import "engine/platform"
 import "engine/renderer"
+import rt "engine/renderer/types"
 
 Window_State :: struct {
     x, y: i32,
     width, height: u32,
     window_id: platform.Window_Id,
-    window_context_id: renderer.Window_Context_Id,
+    window_context_handle: rt.Window_Context_Handle,
     is_fullscreen: bool,
     is_destroyed: bool,
     is_created: bool,
@@ -22,7 +23,7 @@ worker :: proc(t: ^thread.Thread) {
     windows := make(map[platform.Window_Id]Window_State)
     defer delete(windows)
 
-    for i in 0..<4 {
+    for i in 0..<1 {
         x := i < 2 ? 100 : 900
         y := i % 2 == 0 ? 100 : 700
         window_id := platform.create_window({"Chronicle", i32(x), i32(y), 800, 600})
@@ -46,10 +47,10 @@ worker :: proc(t: ^thread.Thread) {
                     //log.infof("Window created: %v", window_created_event)
                     
                     window := windows[window_created_event.window_id]
-                    window_context_id, _ := renderer.init_window(window_created_event.instance,
-                                                                 window_created_event.handle,
-                                                                 window.width, window.height)
-                    window.window_context_id = window_context_id
+                    window_context_handle, _ := renderer.init_window(window_created_event.instance,
+                                                                     window_created_event.handle,
+                                                                     window.width, window.height)
+                    window.window_context_handle = window_context_handle
                     window.is_created = true
                     windows[window_created_event.window_id] = window
 
@@ -58,7 +59,9 @@ worker :: proc(t: ^thread.Thread) {
                     //log.infof("Window destroyed: %v", window_destroyed_event)
                     
                     window := windows[window_destroyed_event.window_id]
-                    renderer.destroy_window(window.window_context_id)
+                    if window.window_context_handle != nil {
+                        renderer.destroy_window(window.window_context_handle)
+                    }
                     delete_key(&windows, window_destroyed_event.window_id)
 
                 case platform.Window_Moved_Event:
@@ -73,8 +76,8 @@ worker :: proc(t: ^thread.Thread) {
                     window.width = u32(window_resized_event.width)
                     window.height = u32(window_resized_event.height)
                     // TODO: we need to resize the renderer here?
-                    if window.window_context_id != 0 {
-                        renderer.resize_window(window.window_context_id,
+                    if window.window_context_handle != nil {
+                        renderer.resize_window(window.window_context_handle,
                                                u32(window_resized_event.width),
                                                u32(window_resized_event.height))
                     }
@@ -123,8 +126,9 @@ worker :: proc(t: ^thread.Thread) {
                 all_closed = false
                 //break
 
-                if window.is_created && renderer.begin_frame(window.window_context_id, 0.0) {
-                    renderer.end_frame(window.window_context_id, 0.0)
+                if window.is_created && window.window_context_handle != nil &&
+                   renderer.begin_frame(window.window_context_handle, 0.0) {
+                    renderer.end_frame(window.window_context_handle, 0.0)
                 }
             }
         }
@@ -137,7 +141,9 @@ worker :: proc(t: ^thread.Thread) {
     }
 
     for _, window in windows {
-        renderer.destroy_window(window.window_context_id)
+        if window.window_context_handle != nil {
+            renderer.destroy_window(window.window_context_handle)
+        }
     }
 }
 

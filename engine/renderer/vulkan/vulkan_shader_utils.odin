@@ -18,6 +18,7 @@ import vk "vendor:vulkan"
 //   shader_stages: []Vulkan_Shader_Stage - The shader stages.
 // Returns:
 //   b8 - Whether the shader module was created successfully.
+@private
 vk_create_shader_module :: proc(name: string,
                                 type_str: string,
                                 shader_stage_flags: vk.ShaderStageFlags,

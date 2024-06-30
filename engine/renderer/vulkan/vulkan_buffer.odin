@@ -16,6 +16,7 @@ import vk "vendor:vulkan"
 //   out_buffer: ^Vulkan_Buffer - Pointer to the Vulkan buffer to be allocated.
 // Returns:
 //   b8 - Whether the buffer was allocated successfully.
+@private
 vk_buffer_create :: proc(size: u64,
                          usage: vk.BufferUsageFlags,
                          memory_property_flags: vk.MemoryPropertyFlags,
@@ -82,6 +83,7 @@ vk_buffer_create :: proc(size: u64,
 //
 // Parameters:
 //   buffer: ^Vulkan_Buffer - Pointer to the Vulkan buffer to be destroyed.
+@private
 vk_buffer_destroy :: proc(buffer: ^Vulkan_Buffer) {
     if buffer.memory != 0 {
         vk.FreeMemory(global_context.device.logical_device,
@@ -111,6 +113,7 @@ vk_buffer_destroy :: proc(buffer: ^Vulkan_Buffer) {
 //   pool: vk.CommandPool - The command pool to use for the resize operation.
 // Returns:
 //   b8 - Whether the buffer was resized successfully.
+@private
 vk_buffer_resize :: proc(new_size: u64,
                          buffer: ^Vulkan_Buffer,
                          queue: vk.Queue,
@@ -198,6 +201,7 @@ vk_buffer_resize :: proc(new_size: u64,
 // Parameters:
 //   buffer: ^Vulkan_Buffer - Pointer to the Vulkan buffer to bind.
 //   offset: u64 - The offset to bind the buffer to.
+@private
 vk_buffer_bind :: proc(buffer: ^Vulkan_Buffer, offset: u64) {
     result := vk.BindBufferMemory(global_context.device.logical_device,
                                   buffer.handle,
@@ -212,6 +216,12 @@ vk_buffer_bind :: proc(buffer: ^Vulkan_Buffer, offset: u64) {
 //
 // Parameters:
 //   buffer: ^Vulkan_Buffer - Pointer to the Vulkan buffer to lock.
+//   offset: u64 - The offset to lock the buffer at.
+//   size: u64 - The size of the buffer to lock.
+//   flags: vk.MemoryMapFlags - The memory map flags to use.
+// Returns:
+//   rawptr - The pointer to the locked memory.
+@private
 vk_buffer_lock_memory :: proc(buffer: ^Vulkan_Buffer, offset: u64, size: u64,
                               flags: vk.MemoryMapFlags) -> rawptr {
     data: rawptr
@@ -233,10 +243,20 @@ vk_buffer_lock_memory :: proc(buffer: ^Vulkan_Buffer, offset: u64, size: u64,
 //
 // Parameters:
 //   buffer: ^Vulkan_Buffer - Pointer to the Vulkan buffer to unlock.
+@private
 vk_buffer_unlock_memory :: proc(buffer: ^Vulkan_Buffer) {
     vk.UnmapMemory(global_context.device.logical_device, buffer.memory)
 }
 
+// Loads data into a Vulkan buffer.
+//
+// Parameters:
+//   buffer: ^Vulkan_Buffer - Pointer to the Vulkan buffer to load data into.
+//   offset: u64 - The offset to load the data into.
+//   size: u64 - The size of the data to load.
+//   flags: vk.MemoryMapFlags - The memory map flags to use.
+//   data: rawptr - The data to load into the buffer.
+@private
 vk_buffer_load_data :: proc(buffer: ^Vulkan_Buffer, offset: u64, size: u64,
                             flags: vk.MemoryMapFlags, data: rawptr) {
     data_ptr: rawptr
@@ -267,6 +287,7 @@ vk_buffer_load_data :: proc(buffer: ^Vulkan_Buffer, offset: u64, size: u64,
 //   dest: vk.Buffer - The destination buffer.
 //   dest_offset: u64 - The offset in the destination buffer.
 //   size: u64 - The size of the data to copy.
+@private
 vk_buffer_copy_to :: proc(pool: vk.CommandPool,
                           fence: vk.Fence,
                           queue: vk.Queue,

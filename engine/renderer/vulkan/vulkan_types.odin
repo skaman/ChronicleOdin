@@ -8,6 +8,7 @@ import "../../platform"
 import "../../mathx"
 
 // Struct to hold Vulkan buffer information.
+@private
 Vulkan_Buffer :: struct {
     total_size: u64,                                // Total size of the buffer.
     handle: vk.Buffer,                              // Vulkan buffer handle.
@@ -19,6 +20,7 @@ Vulkan_Buffer :: struct {
 }
 
 // Struct to hold Vulkan swapchain support information.
+@private
 Vulkan_Swapchain_Support_Info :: struct {
     capabilities: vk.SurfaceCapabilitiesKHR,    // Surface capabilities.
     surface_formats: []vk.SurfaceFormatKHR,     // Supported surface formats.
@@ -26,6 +28,7 @@ Vulkan_Swapchain_Support_Info :: struct {
 }
 
 // Struct to hold Vulkan device information.
+@private
 Vulkan_Device :: struct {
     physical_device: vk.PhysicalDevice,                 // Physical Vulkan device.
     logical_device: vk.Device,                          // Logical Vulkan device.
@@ -48,6 +51,7 @@ Vulkan_Device :: struct {
 }
 
 // Struct to hold Vulkan image information.
+@private
 Vulkan_Image :: struct {
     handle: vk.Image,           // Vulkan image handle.
     memory: vk.DeviceMemory,    // Vulkan device memory.
@@ -57,6 +61,7 @@ Vulkan_Image :: struct {
 }
 
 // Enum to represent the state of a Vulkan render pass.
+@private
 Vulkan_Render_Pass_State :: enum {
     Ready,
     Recording,
@@ -67,6 +72,7 @@ Vulkan_Render_Pass_State :: enum {
 }
 
 // Struct to hold Vulkan render pass information.
+@private
 Vulkan_Render_Pass :: struct {
     handle: vk.RenderPass,              // Vulkan render pass handle.
     render_area: mathx.Vector4,         // Render area.
@@ -79,6 +85,7 @@ Vulkan_Render_Pass :: struct {
 }
 
 // Struct to hold Vulkan frame buffer information.
+@private
 Vulkan_Frame_Buffer :: struct {
     handle: vk.Framebuffer,             // Vulkan framebuffer handle.
     attachments: []vk.ImageView,        // Attachments for the framebuffer.
@@ -86,6 +93,7 @@ Vulkan_Frame_Buffer :: struct {
 }
 
 // Struct to hold Vulkan swapchain information.
+@private
 Vulkan_Swapchain :: struct {
     image_format: vk.SurfaceFormatKHR,      // Format of the swapchain images.
     max_frames_in_flight: u8,               // Maximum number of frames in flight.
@@ -99,6 +107,7 @@ Vulkan_Swapchain :: struct {
 }
 
 // Enum to represent the state of a Vulkan command buffer.
+@private
 Vulkan_Command_Buffer_State :: enum {
     Ready,
     Recording,
@@ -109,18 +118,21 @@ Vulkan_Command_Buffer_State :: enum {
 }
 
 // Struct to hold Vulkan command buffer information.
+@private
 Vulkan_Command_Buffer :: struct {
     handle: vk.CommandBuffer,               // Vulkan command buffer handle.
     state: Vulkan_Command_Buffer_State,     // State of the command buffer.
 }
 
 // Struct to hold Vulkan fence information.
+@private
 Vulkan_Fence :: struct {
     handle: vk.Fence,   // Vulkan fence handle.
     is_signaled: b8,    // Indicates if the fence is signaled.
 }
 
 // Struct to hold Vulkan shader stage information.
+@private
 Vulkan_Shader_Stage :: struct {
     create_info: vk.ShaderModuleCreateInfo,                     // Shader module create info.
     handle: vk.ShaderModule,                                    // Shader module handle.
@@ -128,15 +140,18 @@ Vulkan_Shader_Stage :: struct {
 }
 
 // Struct to hold Vulkan pipeline layout information.
+@private
 Vulkan_Pipeline :: struct {
     handle: vk.Pipeline,        // Vulkan pipeline handle.
     layout: vk.PipelineLayout,  // Vulkan pipeline layout.
 }
 
 // Number of object shader stages.
+@private
 OBJECT_SHADER_STAGE_COUNT :: u32(2)
 
 // Struct to hold Vulkan semaphore information.
+@private
 Vulkan_Object_Shader :: struct {
     stages: [OBJECT_SHADER_STAGE_COUNT]Vulkan_Shader_Stage, // Shader stages.
 
@@ -144,6 +159,7 @@ Vulkan_Object_Shader :: struct {
 }
 
 // Struct to hold Vulkan window context information.
+@private
 Vulkan_Window_Context :: struct {
     instance: platform.Instance,            // Platform instance for the window.
     handle: platform.Handle,                // Handle for the window.
@@ -188,6 +204,7 @@ Vulkan_Window_Context :: struct {
 }
 
 // Struct to hold the global Vulkan context.
+@private
 Vulkan_Context :: struct {
     instance: vk.Instance,                              // Vulkan instance.
     allocator: ^vk.AllocationCallbacks,                 // Pointer to Vulkan allocation callbacks.

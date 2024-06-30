@@ -1,15 +1,8 @@
 package renderer
 
+import rt "types"
 import "vulkan"
 import "../platform"
-
-// Distinct type for window context identifier
-Window_Context_Id :: distinct u32
-
-// Enumeration for different renderer backend types
-Renderer_Backend_Type :: enum {
-    Vulkan,
-}
 
 // Struct to define the renderer backend interface
 @(private="file")
@@ -19,14 +12,14 @@ Renderer_Backend :: struct {
 
     init_window: proc(instance: platform.Instance,  // Function to initialize a window
                       handle: platform.Handle,
-                      width: u32, height: u32) -> (u32, b8),
-    destroy_window: proc(window_context_id: u32),   // Function to destroy a window
-    resize_window: proc(window_context_id: u32,     // Function to resize a window
+                      width: u32, height: u32) -> (rt.Window_Context_Handle, b8),
+    destroy_window: proc(window_context_handle: rt.Window_Context_Handle),   // Function to destroy a window
+    resize_window: proc(window_context_handle: rt.Window_Context_Handle,     // Function to resize a window
                         width: u32, height: u32),
 
-    begin_frame: proc(window_context_id: u32,       // Function to begin rendering a frame
+    begin_frame: proc(window_context_handle: rt.Window_Context_Handle,       // Function to begin rendering a frame
                       delta_time: f32) -> b8,
-    end_frame: proc(window_context_id: u32,         // Function to end rendering a frame
+    end_frame: proc(window_context_handle: rt.Window_Context_Handle,         // Function to end rendering a frame
                     delta_time: f32) -> b8,
 }
 
@@ -42,7 +35,7 @@ global_renderer_backend : Renderer_Backend
 //
 // Returns:
 //   b8 - True if initialization was successful, otherwise false.
-init :: proc(backend: Renderer_Backend_Type, app_name: string) -> b8 {
+init :: proc(backend: rt.Renderer_Backend_Type, app_name: string) -> b8 {
     switch backend {
         case .Vulkan:
             global_renderer_backend.init = vulkan.init
@@ -73,49 +66,58 @@ destroy :: proc() {
 // Returns:
 //   (Window_Context_Id, b8) - The window context ID and a boolean indicating success.
 init_window :: proc(instance: platform.Instance, handle: platform.Handle,
-                    width: u32, height: u32) -> (Window_Context_Id, b8) {
-    window_context_id, ok := global_renderer_backend.init_window(instance, handle, width, height)
-    return Window_Context_Id(window_context_id), ok
+                    width: u32, height: u32) -> (rt.Window_Context_Handle, b8) {
+    return global_renderer_backend.init_window(instance, handle, width, height)
 }
 
 // Destroys the specified window.
 //
 // Parameters:
-//   window_context_id: Window_Context_Id - The ID of the window context to destroy.
-destroy_window :: proc(window_context_id: Window_Context_Id) {
-    global_renderer_backend.destroy_window(u32(window_context_id))
+//   window_context_handle: rt.Window_Context_Handle - The ID of the window context to destroy.
+destroy_window :: proc(window_context_handle: rt.Window_Context_Handle) {
+    assert(window_context_handle != nil, "Invalid window context handle")
+
+    global_renderer_backend.destroy_window(window_context_handle)
 }
 
 // Resizes the specified window.
 //
 // Parameters:
-//   window_context_id: Window_Context_Id - The ID of the window context to resize.
+//   window_context_handle: rt.Window_Context_Handle - The ID of the window context to resize.
 //   width: u32 - The new width of the window.
 //   height: u32 - The new height of the window.
-resize_window :: proc(window_context_id: Window_Context_Id, width: u32, height: u32) {
-    global_renderer_backend.resize_window(u32(window_context_id), width, height)
+resize_window :: proc(window_context_handle: rt.Window_Context_Handle, width: u32, height: u32) {
+    assert(window_context_handle != nil, "Invalid window context handle")
+    
+    global_renderer_backend.resize_window(window_context_handle, width, height)
 }
 
 // Begins rendering a frame for the specified window.
 //
 // Parameters:
-//   window_context_id: Window_Context_Id - The ID of the window context to begin rendering.
+//   window_context_handle: rt.Window_Context_Handle - The ID of the window context to begin
+//                                                     rendering.
 //   delta_time: f32 - The time since the last frame.
 //
 // Returns:
 //   b8 - True if the frame was successfully begun, otherwise false.
-begin_frame :: proc(window_context_id: Window_Context_Id, delta_time: f32) -> b8 {
-    return global_renderer_backend.begin_frame(u32(window_context_id), delta_time)
+begin_frame :: proc(window_context_handle: rt.Window_Context_Handle, delta_time: f32) -> b8 {
+    assert(window_context_handle != nil, "Invalid window context handle")
+    
+    return global_renderer_backend.begin_frame(window_context_handle, delta_time)
 }
 
 // Ends rendering a frame for the specified window.
 //
 // Parameters:
-//   window_context_id: Window_Context_Id - The ID of the window context to end rendering.
+//   window_context_handle: rt.Window_Context_Handle - The ID of the window context to end
+//                                                     rendering.
 //   delta_time: f32 - The time since the last frame.
 //
 // Returns:
 //   b8 - True if the frame was successfully ended, otherwise false.
-end_frame :: proc(window_context_id: Window_Context_Id, delta_time: f32) -> b8 {
-    return global_renderer_backend.end_frame(u32(window_context_id), delta_time)
+end_frame :: proc(window_context_handle: rt.Window_Context_Handle, delta_time: f32) -> b8 {
+    assert(window_context_handle != nil, "Invalid window context handle")
+    
+    return global_renderer_backend.end_frame(window_context_handle, delta_time)
 }
