@@ -19,7 +19,6 @@ vk_swapchain_create_internal :: proc(window_context: ^Vulkan_Window_Context,
         width,
         height,
     }
-    swapchain.max_frames_in_flight = 2
 
     // Choose a swapchain format
     found := false
@@ -62,6 +61,7 @@ vk_swapchain_create_internal :: proc(window_context: ^Vulkan_Window_Context,
        image_count > global_context.device.swapchain_support.capabilities.maxImageCount {
         image_count = global_context.device.swapchain_support.capabilities.maxImageCount
     }
+    swapchain.max_frames_in_flight = u8(image_count - 1)
 
     // Swapchain craete info
     swapchain_create_info := vk.SwapchainCreateInfoKHR{
@@ -221,7 +221,8 @@ vk_swapchain_recreate :: proc(window_context: ^Vulkan_Window_Context, width: u32
 //   window_context: ^Vulkan_Window_Context - Pointer to the window context.
 //   swapchain: ^Vulkan_Swapchain - Pointer to the swapchain to be destroyed.
 @private
-vk_swapchain_destroy :: proc(window_context: ^Vulkan_Window_Context, swapchain: ^Vulkan_Swapchain) {
+vk_swapchain_destroy :: proc(window_context: ^Vulkan_Window_Context,
+                             swapchain: ^Vulkan_Swapchain) {
     vk_swapchain_destroy_internal(window_context, swapchain)
 }
 

@@ -1,5 +1,6 @@
 @echo off
 
-if not exist "%cd%\bin" mkdir "%cd%\bin"
-call build-assets.bat
-odin run . -out:bin/chronicle_release.exe -o:aggressive
+call build-release.bat
+pushd bin
+chronicle_release.exe
+popd

@@ -230,6 +230,41 @@ vk_recreate_swapchain :: proc(window_context: ^Vulkan_Window_Context) -> b8 {
     return true
 }
 
+// Creates default Vulkan buffers.
+//
+// Parameters:
+//   window_context: ^Vulkan_Window_Context - Pointer to the window context.
+//
+// Returns:
+//   b8 - True if the buffers were successfully created, otherwise false.
+vk_create_buffers :: proc(window_context: ^Vulkan_Window_Context) -> b8 {
+    memory_property_flags: vk.MemoryPropertyFlags = {.DEVICE_LOCAL}
+
+    VERTEX_BUFFER_SIZE :: size_of(mathx.Vector3) * 1024 * 1024;
+    if !vk_buffer_create(VERTEX_BUFFER_SIZE,
+                         {.VERTEX_BUFFER, .TRANSFER_DST, .TRANSFER_SRC},
+                         memory_property_flags,
+                         true,
+                         &window_context.object_vertex_buffer) {
+        log.error("Failed to create vertex buffer")
+        return false
+    }
+    window_context.geometry_vertex_offset = 0
+
+    INDEX_BUFFER_SIZE :: size_of(u32) * 1024 * 1024;
+    if !vk_buffer_create(INDEX_BUFFER_SIZE,
+                         {.INDEX_BUFFER, .TRANSFER_DST, .TRANSFER_SRC},
+                         memory_property_flags,
+                         true,
+                         &window_context.object_index_buffer) {
+        log.error("Failed to create index buffer")
+        return false
+    }
+    window_context.geometry_index_offset = 0
+
+    return true
+}
+
 // Initializes the Vulkan context and creates the Vulkan instance.
 //
 // Parameters:
@@ -486,6 +521,17 @@ init_window :: proc(instance: platform.Instance, handle: platform.Handle,
     // are not owned by this list.
     window_context.images_in_flight = make([]^Vulkan_Fence, len(window_context.swapchain.images))
 
+    // Create builtin shaders
+    if !vk_object_shader_create(&window_context, &window_context.object_shader) {
+        log.error("Failed to create object shader")
+        return {}, false
+    }
+
+    if !vk_create_buffers(&window_context) {
+        log.error("Failed to create buffers")
+        return {}, false
+    }
+
     log.info("Vulkan window initialized successfully")
 
     return utils.add_to_free_list(&global_window_contexts, window_context), true
@@ -500,6 +546,12 @@ destroy_window :: proc(window_context_id: u32) {
 
     vk.DeviceWaitIdle(global_context.device.logical_device)
 
+    // Destroy buffers
+    vk_buffer_destroy(&window_context.object_vertex_buffer)
+    vk_buffer_destroy(&window_context.object_index_buffer)
+
+    vk_object_shader_destroy(&window_context.object_shader)
+    
     // Destroy sync objects
     if window_context.images_in_flight != nil {
         delete(window_context.images_in_flight)
