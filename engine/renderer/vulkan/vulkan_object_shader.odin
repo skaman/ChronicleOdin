@@ -1,10 +1,11 @@
 package renderer_vulkan
 
 import "core:log"
+import "core:math/linalg"
 
 import vk "vendor:vulkan"
 
-import "../../mathx"
+import rt "../types"
 
 BUILTIN_SHADER_NAME_OBJECT :: "builtin_object_shader"
 
@@ -30,7 +31,51 @@ vk_object_shader_create :: proc(window_context: ^Vulkan_Window_Context,
         }
     }
 
-    // TODO: Descriptors
+    // Global Descriptors
+    global_ubo_layout_binding := vk.DescriptorSetLayoutBinding{
+        binding = 0,
+        descriptorCount = 1,
+        descriptorType = .UNIFORM_BUFFER,
+        pImmutableSamplers = nil,
+        stageFlags = {.VERTEX},
+    }
+
+    global_layout_create_info := vk.DescriptorSetLayoutCreateInfo{
+        sType = .DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        bindingCount = 1,
+        pBindings = &global_ubo_layout_binding,
+    }
+
+    result := vk.CreateDescriptorSetLayout(global_context.device.logical_device,
+                                           &global_layout_create_info,
+                                           global_context.allocator,
+                                           &out_shader.global_descriptor_set_layout)
+    if result != .SUCCESS {
+        log.error("Failed to create global descriptor set layout")
+        return false
+    }
+
+    // Global Descriptor Pool
+    global_pool_size := vk.DescriptorPoolSize{
+        type = .UNIFORM_BUFFER,
+        descriptorCount = u32(len(window_context.swapchain.images)),
+    }
+
+    global_pool_info := vk.DescriptorPoolCreateInfo{
+        sType = .DESCRIPTOR_POOL_CREATE_INFO,
+        poolSizeCount = 1,
+        pPoolSizes = &global_pool_size,
+        maxSets = u32(len(window_context.swapchain.images)),
+    }
+
+    result = vk.CreateDescriptorPool(global_context.device.logical_device,
+                                     &global_pool_info,
+                                     global_context.allocator,
+                                     &out_shader.global_descriptor_pool)
+    if result != .SUCCESS {
+        log.error("Failed to create global descriptor pool")
+        return false
+    }
 
     // Pipeline creation
     viewport := vk.Viewport{
@@ -55,7 +100,7 @@ vk_object_shader_create :: proc(window_context: ^Vulkan_Window_Context,
     attribute_descriptions: [ATTRIBUTE_COUNT]vk.VertexInputAttributeDescription
     
     formats := [ATTRIBUTE_COUNT]vk.Format{.R32G32B32_SFLOAT}
-    sizes := [ATTRIBUTE_COUNT]u64{size_of(mathx.Vector3)}
+    sizes := [ATTRIBUTE_COUNT]u64{size_of(linalg.Vector3f32)}
 
     for i in 0..<ATTRIBUTE_COUNT {
         attribute_descriptions[i].location = i
@@ -65,7 +110,11 @@ vk_object_shader_create :: proc(window_context: ^Vulkan_Window_Context,
         offset += u32(sizes[i])
     }
 
-    // TODO: Descriptor set layout
+    // Descriptor set layout
+    DESCRIPTOR_SET_LAYOUT_COUNT :: u32(1)
+    layouts := [DESCRIPTOR_SET_LAYOUT_COUNT]vk.DescriptorSetLayout{
+        out_shader.global_descriptor_set_layout
+    }
 
     // Stages
     // NOTES: Should match the number of shader->stages
@@ -75,16 +124,47 @@ vk_object_shader_create :: proc(window_context: ^Vulkan_Window_Context,
         stage_create_infos[i] = out_shader.stages[i].shader_stage_create_info
     }
     
-    todo_fake_temp_descriptors: [1]vk.DescriptorSetLayout
     if !vk_graphics_pipeline_create(&window_context.main_render_pass,
                                     attribute_descriptions[:],
-                                    todo_fake_temp_descriptors[:],
+                                    layouts[:],
                                     stage_create_infos[:],
                                     viewport,
                                     scissor,
                                     false,
                                     &out_shader.pipeline) {
         log.errorf("Unable to create graphics pipeline for '%s'", BUILTIN_SHADER_NAME_OBJECT)
+        return false
+    }
+
+    // Create uniform buffer
+    if !vk_buffer_create(size_of(rt.Global_Uniform_Object) * 3,
+                         {.TRANSFER_DST, .UNIFORM_BUFFER},
+                         {.DEVICE_LOCAL, .HOST_VISIBLE, .HOST_COHERENT},
+                         true,
+                         &out_shader.global_ubo_buffer) {
+        log.error("Failed to create global uniform buffer")
+        return false
+    }
+
+    // Allocate global descriptor sets
+    global_layouts := [3]vk.DescriptorSetLayout{
+        out_shader.global_descriptor_set_layout,
+        out_shader.global_descriptor_set_layout,
+        out_shader.global_descriptor_set_layout
+    }
+
+    alloc_info := vk.DescriptorSetAllocateInfo{
+        sType = .DESCRIPTOR_SET_ALLOCATE_INFO,
+        descriptorPool = out_shader.global_descriptor_pool,
+        descriptorSetCount = 3,
+        pSetLayouts = &global_layouts[0],
+    }
+
+    result = vk.AllocateDescriptorSets(global_context.device.logical_device,
+                                       &alloc_info,
+                                       &out_shader.global_descriptor_sets[0])
+    if result != .SUCCESS {
+        log.error("Failed to allocate global descriptor sets")
         return false
     }
 
@@ -96,15 +176,23 @@ vk_object_shader_create :: proc(window_context: ^Vulkan_Window_Context,
 // Parameters:
 //   shader: ^Vulkan_Object_Shader - Pointer to the object shader to be destroyed.
 vk_object_shader_destroy :: proc(shader: ^Vulkan_Object_Shader) {
-    if shader.pipeline.handle != 0 {
-        vk_pipeline_destroy(&shader.pipeline)
+    logical_device := global_context.device.logical_device
 
-        for i in 0..<OBJECT_SHADER_STAGE_COUNT {
-            vk.DestroyShaderModule(global_context.device.logical_device,
-                                   shader.stages[i].handle,
-                                   global_context.allocator)
-            shader.stages[i].handle = 0
-        }
+    // Destroy uniform buffer
+    vk_buffer_destroy(&shader.global_ubo_buffer)
+
+    // Destroy pipeline
+    vk_pipeline_destroy(&shader.pipeline)
+
+    // Destroy global descriptor pool
+    vk.DestroyDescriptorPool(logical_device, shader.global_descriptor_pool,
+                             global_context.allocator)
+
+    // Destroy shader modules
+    for i in 0..<OBJECT_SHADER_STAGE_COUNT {
+        vk.DestroyShaderModule(logical_device, shader.stages[i].handle,
+                                global_context.allocator)
+        shader.stages[i].handle = 0
     }
 }
 
@@ -116,4 +204,49 @@ vk_object_shader_destroy :: proc(shader: ^Vulkan_Object_Shader) {
 vk_object_shader_use :: proc(window_context: ^Vulkan_Window_Context,
                              shader: ^Vulkan_Object_Shader) {
     
+}
+
+// Update the global state of an object shader.
+//
+// Parameters:
+//   window_context: ^Vulkan_Window_Context - Pointer to the window context.
+//   shader: ^Vulkan_Object_Shader - Pointer to the object shader to be updated.
+vk_object_shader_update_global_state :: proc(window_context: ^Vulkan_Window_Context,
+                                             shader: ^Vulkan_Object_Shader) {
+    image_index := window_context.image_index
+    command_buffer := window_context.graphics_command_buffers[image_index].handle
+    global_descriptor := shader.global_descriptor_sets[image_index]
+
+    // Configure the descriptors for the given index
+    range := u64(size_of(rt.Global_Uniform_Object))
+    offset := u64(size_of(rt.Global_Uniform_Object) * image_index)
+
+    // Copy data to buffer
+    vk_buffer_load_data(&shader.global_ubo_buffer, offset, range, {}, &shader.global_ubo)
+
+    buffer_info := vk.DescriptorBufferInfo{
+        buffer = shader.global_ubo_buffer.handle,
+        offset = vk.DeviceSize(offset),
+        range = vk.DeviceSize(range),
+    }
+
+    // Update the descriptor set
+    write_descriptor_set := vk.WriteDescriptorSet{
+        sType = .WRITE_DESCRIPTOR_SET,
+        dstSet = shader.global_descriptor_sets[image_index],
+        dstBinding = 0,
+        dstArrayElement = 0,
+        descriptorType = .UNIFORM_BUFFER,
+        descriptorCount = 1,
+        pBufferInfo = &buffer_info,
+        pImageInfo = nil,
+        pTexelBufferView = nil,
+    }
+
+    vk.UpdateDescriptorSets(global_context.device.logical_device,
+                            1, &write_descriptor_set, 0, nil)
+
+    // Bind the global descriptor set to be updated
+    vk.CmdBindDescriptorSets(command_buffer, .GRAPHICS, shader.pipeline.layout,
+                             0, 1, &global_descriptor, 0, nil)
 }

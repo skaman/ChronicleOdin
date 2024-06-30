@@ -1,11 +1,12 @@
 package renderer_vulkan
 
 import "base:runtime"
+import "core:math/linalg"
 
 import vk "vendor:vulkan"
 
+import rt "../types"
 import "../../platform"
-import "../../mathx"
 
 // Struct to hold Vulkan buffer information.
 @private
@@ -75,8 +76,8 @@ Vulkan_Render_Pass_State :: enum {
 @private
 Vulkan_Render_Pass :: struct {
     handle: vk.RenderPass,              // Vulkan render pass handle.
-    render_area: mathx.Vector4,         // Render area.
-    clear_color: mathx.Vector4,         // Clear color.
+    render_area: linalg.Vector4f32,     // Render area.
+    clear_color: linalg.Vector4f32,     // Clear color.
 
     depth: f32,                         // Depth value.
     stencil: u32,                       // Stencil value.
@@ -154,6 +155,14 @@ OBJECT_SHADER_STAGE_COUNT :: u32(2)
 @private
 Vulkan_Object_Shader :: struct {
     stages: [OBJECT_SHADER_STAGE_COUNT]Vulkan_Shader_Stage, // Shader stages.
+
+    global_descriptor_pool: vk.DescriptorPool,              // Global descriptor pool.
+    global_descriptor_set_layout: vk.DescriptorSetLayout,   // Global descriptor set layout.
+    global_descriptor_sets: [3]vk.DescriptorSet,            // Global descriptor sets. One
+                                                            // descriptor set for each frame in
+                                                            // flight.
+    global_ubo: rt.Global_Uniform_Object,                   // Global uniform object.
+    global_ubo_buffer: Vulkan_Buffer,                       // Global uniform buffer.
 
     pipeline: Vulkan_Pipeline,                              // Vulkan pipeline.
 }

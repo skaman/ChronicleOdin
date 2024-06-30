@@ -5,6 +5,7 @@ import "core:log"
 import "base:runtime"
 import "core:math"
 import "core:mem"
+import "core:math/linalg"
 
 import vk "vendor:vulkan"
 
@@ -12,7 +13,6 @@ import rt "../types"
 
 import "../../platform"
 import "../../utils"
-import "../../mathx"
 
 // Contains the global context for Vulkan, including Vulkan instance and debug context.
 @private
@@ -258,7 +258,7 @@ vk_recreate_swapchain :: proc(window_context: ^Vulkan_Window_Context) -> b8 {
 vk_create_buffers :: proc(window_context: ^Vulkan_Window_Context) -> b8 {
     memory_property_flags: vk.MemoryPropertyFlags = {.DEVICE_LOCAL}
 
-    VERTEX_BUFFER_SIZE :: size_of(mathx.Vector3) * 1024 * 1024;
+    VERTEX_BUFFER_SIZE :: size_of(linalg.Vector3f32) * 1024 * 1024;
     if !vk_buffer_create(VERTEX_BUFFER_SIZE,
                          {.VERTEX_BUFFER, .TRANSFER_DST, .TRANSFER_SRC},
                          memory_property_flags,
@@ -478,9 +478,9 @@ init_window :: proc(instance: platform.Instance, handle: platform.Handle,
 
     // Render pass creation
     vk_render_pass_create(window_context, &window_context.main_render_pass,
-                          mathx.Vector4{0, 0, f32(window_context.frame_buffer_width),
-                                              f32(window_context.frame_buffer_height)},
-                          mathx.Vector4{0, 0, 0.2, 1},
+                          linalg.Vector4f32{0, 0, f32(window_context.frame_buffer_width),
+                                                  f32(window_context.frame_buffer_height)},
+                          linalg.Vector4f32{0, 0, 0.2, 1},
                           1.0, 0)
 
     // Swapachain framebuffers
@@ -549,12 +549,13 @@ init_window :: proc(instance: platform.Instance, handle: platform.Handle,
     }
 
     // TODO: temporary test code
+    FACTOR :: 10
     VERT_COUNT :: u32(4)
-    verts: [VERT_COUNT]mathx.Vector3
-    verts[0] = mathx.Vector3{0, -0.5, 0}
-    verts[1] = mathx.Vector3{0.5, 0.5, 0}
-    verts[2] = mathx.Vector3{0, 0.5, 0}
-    verts[3] = mathx.Vector3{0.5, -0.5, 0}
+    verts: [VERT_COUNT]linalg.Vector3f32
+    verts[0] = linalg.Vector3f32{-0.5, -0.5, 0} * FACTOR
+    verts[1] = linalg.Vector3f32{0.5, 0.5, 0} * FACTOR
+    verts[2] = linalg.Vector3f32{-0.5, 0.5, 0} * FACTOR
+    verts[3] = linalg.Vector3f32{0.5, -0.5, 0} * FACTOR
 
     INDEX_COUNT :: u32(6)
     indices: [INDEX_COUNT]u32
@@ -770,16 +771,6 @@ begin_frame :: proc(window_context_handle: rt.Window_Context_Handle, delta_time:
     vk_render_pass_begin(command_buffer, &window_context.main_render_pass,
                          window_context.swapchain.frame_buffers[window_context.image_index].handle)
 
-    // TODO: temporary test code
-    vk_object_shader_use(window_context, &window_context.object_shader)
-    vk_pipeline_bind(command_buffer, .GRAPHICS, &window_context.object_shader.pipeline)
-
-    offsets: [1]vk.DeviceSize
-    vk.CmdBindVertexBuffers(command_buffer.handle, 0, 1, &window_context.object_vertex_buffer.handle, &offsets[0])
-    vk.CmdBindIndexBuffer(command_buffer.handle, window_context.object_index_buffer.handle, 0, .UINT32)
-    vk.CmdDrawIndexed(command_buffer.handle, 6, 1, 0, 0, 0)
-    // TODO: end temporary test code
-
     return true
 }
 
@@ -851,4 +842,39 @@ end_frame :: proc(window_context_handle: rt.Window_Context_Handle, delta_time: f
                          window_context.image_index)
 
     return true
+}
+
+// Updates the global state of the ubo
+//
+// Parameters:
+//   window_context_handle: rt.Window_Context_Handle - The ID of the window context.
+//   projection: linalg.Matrix4f32 - The projection matrix.
+//   view: linalg.Matrix4f32 - The view matrix.
+//   view_position: linalg.Vector3f32 - The view position.
+//   ambient_color: linalg.Vector4f32 - The ambient color.
+//   mode: i32 - ????.
+update_global_state :: proc(window_context_handle: rt.Window_Context_Handle,
+                            projection: linalg.Matrix4f32, view: linalg.Matrix4f32,
+                            view_position: linalg.Vector3f32,
+                            ambient_color: linalg.Vector4f32, mode: i32) {
+    window_context := (^Vulkan_Window_Context)(window_context_handle)
+    command_buffer := &window_context.graphics_command_buffers[window_context.image_index]
+    
+    vk_object_shader_use(window_context, &window_context.object_shader)
+    window_context.object_shader.global_ubo.projection = projection
+    window_context.object_shader.global_ubo.view = view
+
+    // TODO: other ubo properties
+
+    vk_object_shader_update_global_state(window_context, &window_context.object_shader)
+
+    // TODO: temporary test code
+    vk_object_shader_use(window_context, &window_context.object_shader)
+    vk_pipeline_bind(command_buffer, .GRAPHICS, &window_context.object_shader.pipeline)
+
+    offsets: [1]vk.DeviceSize
+    vk.CmdBindVertexBuffers(command_buffer.handle, 0, 1, &window_context.object_vertex_buffer.handle, &offsets[0])
+    vk.CmdBindIndexBuffer(command_buffer.handle, window_context.object_index_buffer.handle, 0, .UINT32)
+    vk.CmdDrawIndexed(command_buffer.handle, 6, 1, 0, 0, 0)
+    // TODO: end temporary test code
 }

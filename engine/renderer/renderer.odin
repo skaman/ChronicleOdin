@@ -1,5 +1,7 @@
 package renderer
 
+import "core:math/linalg"
+
 import rt "types"
 import "vulkan"
 import "../platform"
@@ -13,14 +15,27 @@ Renderer_Backend :: struct {
     init_window: proc(instance: platform.Instance,  // Function to initialize a window
                       handle: platform.Handle,
                       width: u32, height: u32) -> (rt.Window_Context_Handle, b8),
-    destroy_window: proc(window_context_handle: rt.Window_Context_Handle),   // Function to destroy a window
-    resize_window: proc(window_context_handle: rt.Window_Context_Handle,     // Function to resize a window
+
+    // Function to destroy a window
+    destroy_window: proc(window_context_handle: rt.Window_Context_Handle),
+
+    // Function to resize a window
+    resize_window: proc(window_context_handle: rt.Window_Context_Handle,
                         width: u32, height: u32),
 
-    begin_frame: proc(window_context_handle: rt.Window_Context_Handle,       // Function to begin rendering a frame
+    // Function to begin rendering a frame
+    begin_frame: proc(window_context_handle: rt.Window_Context_Handle,
                       delta_time: f32) -> b8,
-    end_frame: proc(window_context_handle: rt.Window_Context_Handle,         // Function to end rendering a frame
+
+    // Function to end rendering a frame
+    end_frame: proc(window_context_handle: rt.Window_Context_Handle,
                     delta_time: f32) -> b8,
+
+    // Function to update the global state
+    update_global_state: proc(window_context_handle: rt.Window_Context_Handle,
+                              projection: linalg.Matrix4f32, view: linalg.Matrix4f32,
+                              view_position: linalg.Vector3f32,
+                              ambient_color: linalg.Vector4f32, mode: i32),
 }
 
 // Global variable to store the current renderer backend
@@ -45,6 +60,7 @@ init :: proc(backend: rt.Renderer_Backend_Type, app_name: string) -> b8 {
             global_renderer_backend.resize_window = vulkan.resize_window
             global_renderer_backend.begin_frame = vulkan.begin_frame
             global_renderer_backend.end_frame = vulkan.end_frame
+            global_renderer_backend.update_global_state = vulkan.update_global_state
     }
 
     return global_renderer_backend.init(app_name)
@@ -53,6 +69,7 @@ init :: proc(backend: rt.Renderer_Backend_Type, app_name: string) -> b8 {
 // Destroys the renderer backend.
 destroy :: proc() {
     global_renderer_backend.destroy()
+    global_renderer_backend = {}
 }
 
 // Initializes a window with the specified parameters.
@@ -120,4 +137,23 @@ end_frame :: proc(window_context_handle: rt.Window_Context_Handle, delta_time: f
     assert(window_context_handle != nil, "Invalid window context handle")
     
     return global_renderer_backend.end_frame(window_context_handle, delta_time)
+}
+
+// Updates the global state of the ubo
+//
+// Parameters:
+//   window_context_handle: rt.Window_Context_Handle - The ID of the window context.
+//   projection: linalg.Matrix4f32 - The projection matrix.
+//   view: linalg.Matrix4f32 - The view matrix.
+//   view_position: linalg.Vector3f32 - The view position.
+//   ambient_color: linalg.Vector4f32 - The ambient color.
+//   mode: i32 - ????.
+update_global_state :: proc(window_context_handle: rt.Window_Context_Handle,
+                            projection: linalg.Matrix4f32, view: linalg.Matrix4f32,
+                            view_position: linalg.Vector3f32,
+                            ambient_color: linalg.Vector4f32, mode: i32) {
+    assert(window_context_handle != nil, "Invalid window context handle")
+
+    global_renderer_backend.update_global_state(window_context_handle, projection, view,
+                                                view_position, ambient_color, mode)
 }

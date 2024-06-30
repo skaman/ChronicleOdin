@@ -4,7 +4,7 @@ import "core:log"
 
 import vk "vendor:vulkan"
 
-import "../../mathx"
+import rt "../types"
 
 // Create a Vulkan graphics pipeline.
 //
@@ -114,7 +114,7 @@ vk_graphics_pipeline_create :: proc(renderpass: ^Vulkan_Render_Pass,
     // Vertex input
     vertex_input_state := vk.VertexInputBindingDescription{
         binding = 0,
-        stride = size_of(mathx.Vertex_3D),
+        stride = size_of(rt.Vertex_3D),
         inputRate = .VERTEX,
     }
 
@@ -137,8 +137,8 @@ vk_graphics_pipeline_create :: proc(renderpass: ^Vulkan_Render_Pass,
     // Pipeline layout
     pipeline_layout_create_info := vk.PipelineLayoutCreateInfo{
         sType = .PIPELINE_LAYOUT_CREATE_INFO,
-        setLayoutCount = 0, // u32(len(descriptor_set_layouts)),
-        pSetLayouts = nil, // &descriptor_set_layouts[0],
+        setLayoutCount = u32(len(descriptor_set_layouts)),
+        pSetLayouts = &descriptor_set_layouts[0],
         pushConstantRangeCount = 0,
         pPushConstantRanges = nil,
     }

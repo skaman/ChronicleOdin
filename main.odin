@@ -3,6 +3,8 @@ package main
 import "core:log"
 import "core:mem"
 import "core:thread"
+import "core:math"
+import "core:math/linalg"
 
 import "engine/ecs"
 import "engine/platform"
@@ -128,6 +130,16 @@ worker :: proc(t: ^thread.Thread) {
 
                 if window.is_created && window.window_context_handle != nil &&
                    renderer.begin_frame(window.window_context_handle, 0.0) {
+                    projection := linalg.matrix4_perspective_f32(math.to_radians_f32(45.0), 800.0/600.0, 0.1, 1000.0)
+                    @(static) z := f32(-1)
+                    z -= 0.01
+                    view := linalg.matrix4_translate_f32(linalg.Vector3f32{0, 0, z})
+                    renderer.update_global_state(window.window_context_handle,
+                                                 projection,
+                                                 view,
+                                                 linalg.Vector3f32(0),
+                                                 linalg.Vector4f32(1),
+                                                 0)
                     renderer.end_frame(window.window_context_handle, 0.0)
                 }
             }

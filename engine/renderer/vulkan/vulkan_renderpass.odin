@@ -1,25 +1,24 @@
 package renderer_vulkan
 
 import "core:log"
+import "core:math/linalg"
 
 import vk "vendor:vulkan"
-
-import "../../mathx"
 
 // Creates a Vulkan render pass.
 //
 // Parameters:
 //   window_context: ^Vulkan_Window_Context - Pointer to the window context.
 //   out_render_pass: ^Vulkan_Render_Pass - Pointer to the render pass to be created.
-//   render_area: mathx.Vector4 - The render area dimensions.
-//   clear_color: mathx.Vector4 - The clear color for the render pass.
+//   render_area: linalg.Vector4f32 - The render area dimensions.
+//   clear_color: linalg.Vector4f32 - The clear color for the render pass.
 //   depth: f32 - The depth value for clearing the depth buffer.
 //   stencil: u32 - The stencil value for clearing the stencil buffer.
 @private
 vk_render_pass_create :: proc(window_context: ^Vulkan_Window_Context,
                               out_render_pass: ^Vulkan_Render_Pass,
-                              render_area: mathx.Vector4,
-                              clear_color: mathx.Vector4,
+                              render_area: linalg.Vector4f32,
+                              clear_color: linalg.Vector4f32,
                               depth: f32, stencil: u32) {
     out_render_pass.render_area = render_area
     out_render_pass.clear_color = clear_color
