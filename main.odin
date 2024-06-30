@@ -131,15 +131,23 @@ worker :: proc(t: ^thread.Thread) {
                 if window.is_created && window.window_context_handle != nil &&
                    renderer.begin_frame(window.window_context_handle, 0.0) {
                     projection := linalg.matrix4_perspective_f32(math.to_radians_f32(45.0), 800.0/600.0, 0.1, 1000.0)
-                    @(static) z := f32(-1)
-                    z -= 0.01
-                    view := linalg.matrix4_translate_f32(linalg.Vector3f32{0, 0, z})
+                    view := linalg.matrix4_translate_f32(linalg.Vector3f32{0, 0, 30})
+                    view = linalg.matrix4x4_inverse(view)
                     renderer.update_global_state(window.window_context_handle,
                                                  projection,
                                                  view,
                                                  linalg.Vector3f32(0),
                                                  linalg.Vector4f32(1),
                                                  0)
+
+                    //model := linalg.matrix4_translate_f32(linalg.Vector3f32{0, 0, 0})
+                    //rotation := linalg.matrix4_rotate_f32(math.to_radians_f32(0), linalg.Vector3f32{0, 1, 0})
+                    @(static) angle := f32(0)
+                    angle += 0.001
+                    rotation := linalg.quaternion_angle_axis_f32(angle, linalg.Vector3f32{0, 0, -1})
+                    model := linalg.matrix4_from_trs_f32(linalg.Vector3f32{0, 0, 0}, rotation, linalg.Vector3f32{1, 1, 1})
+                    renderer.update_object(window.window_context_handle, model)
+
                     renderer.end_frame(window.window_context_handle, 0.0)
                 }
             }

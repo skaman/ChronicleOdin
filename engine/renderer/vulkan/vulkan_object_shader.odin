@@ -254,3 +254,14 @@ vk_object_shader_update_global_state :: proc(window_context: ^Vulkan_Window_Cont
     vk.CmdBindDescriptorSets(command_buffer, .GRAPHICS, shader.pipeline.layout,
                              0, 1, &global_descriptor, 0, nil)
 }
+
+vk_object_shader_update_object :: proc(window_context: ^Vulkan_Window_Context,
+                                       shader: ^Vulkan_Object_Shader,
+                                       model: linalg.Matrix4f32) {
+    image_index := window_context.image_index
+    command_buffer := window_context.graphics_command_buffers[image_index].handle
+
+    loc_model := model
+    vk.CmdPushConstants(command_buffer, shader.pipeline.layout,
+                        {.VERTEX}, 0, size_of(linalg.Matrix4f32), &loc_model)
+}

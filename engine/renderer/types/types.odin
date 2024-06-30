@@ -3,7 +3,6 @@ package renderer_types
 import "core:math/linalg"
 
 // Distinct type for window context identifier
-//Window_Context_Id :: distinct u32
 Window_Context_Handle :: distinct rawptr
 
 // Enumeration for different renderer backend types

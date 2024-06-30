@@ -36,6 +36,9 @@ Renderer_Backend :: struct {
                               projection: linalg.Matrix4f32, view: linalg.Matrix4f32,
                               view_position: linalg.Vector3f32,
                               ambient_color: linalg.Vector4f32, mode: i32),
+
+    // Function to update the model object (TEMPORARY)
+    update_object: proc(window_context_handle: rt.Window_Context_Handle, model: linalg.Matrix4f32),
 }
 
 // Global variable to store the current renderer backend
@@ -61,6 +64,7 @@ init :: proc(backend: rt.Renderer_Backend_Type, app_name: string) -> b8 {
             global_renderer_backend.begin_frame = vulkan.begin_frame
             global_renderer_backend.end_frame = vulkan.end_frame
             global_renderer_backend.update_global_state = vulkan.update_global_state
+            global_renderer_backend.update_object = vulkan.update_object
     }
 
     return global_renderer_backend.init(app_name)
@@ -156,4 +160,10 @@ update_global_state :: proc(window_context_handle: rt.Window_Context_Handle,
 
     global_renderer_backend.update_global_state(window_context_handle, projection, view,
                                                 view_position, ambient_color, mode)
+}
+
+update_object :: proc(window_context_handle: rt.Window_Context_Handle, model: linalg.Matrix4f32) {
+    assert(window_context_handle != nil, "Invalid window context handle")
+
+    global_renderer_backend.update_object(window_context_handle, model)
 }

@@ -867,6 +867,13 @@ update_global_state :: proc(window_context_handle: rt.Window_Context_Handle,
     // TODO: other ubo properties
 
     vk_object_shader_update_global_state(window_context, &window_context.object_shader)
+}
+
+update_object :: proc(window_context_handle: rt.Window_Context_Handle, model: linalg.Matrix4f32) {
+    window_context := (^Vulkan_Window_Context)(window_context_handle)
+    command_buffer := &window_context.graphics_command_buffers[window_context.image_index]
+
+    vk_object_shader_update_object(window_context, &window_context.object_shader, model)
 
     // TODO: temporary test code
     vk_object_shader_use(window_context, &window_context.object_shader)

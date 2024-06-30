@@ -1,6 +1,7 @@
 package renderer_vulkan
 
 import "core:log"
+import "core:math/linalg"
 
 import vk "vendor:vulkan"
 
@@ -30,14 +31,14 @@ vk_graphics_pipeline_create :: proc(renderpass: ^Vulkan_Render_Pass,
                                     is_wireframe: b8,
                                     out_pipeline: ^Vulkan_Pipeline) -> b8 {
     // Viewport state
-    viewport_b := viewport
-    scissor_b := scissor
+    local_viewport := viewport
+    local_scissor := scissor
     viewport_state := vk.PipelineViewportStateCreateInfo{
         sType = .PIPELINE_VIEWPORT_STATE_CREATE_INFO,
         viewportCount = 1,
-        pViewports = &viewport_b,
+        pViewports = &local_viewport,
         scissorCount = 1,
-        pScissors = &scissor_b,
+        pScissors = &local_scissor,
     }
 
     // Rasterization state
@@ -134,13 +135,20 @@ vk_graphics_pipeline_create :: proc(renderpass: ^Vulkan_Render_Pass,
         primitiveRestartEnable = false,
     }
 
+    // Push constants
+    push_constant := vk.PushConstantRange{
+        stageFlags = {.VERTEX},
+        offset = size_of(linalg.Matrix4f32) * 0,
+        size = size_of(linalg.Matrix4f32) * 2,
+    }
+
     // Pipeline layout
     pipeline_layout_create_info := vk.PipelineLayoutCreateInfo{
         sType = .PIPELINE_LAYOUT_CREATE_INFO,
         setLayoutCount = u32(len(descriptor_set_layouts)),
         pSetLayouts = &descriptor_set_layouts[0],
-        pushConstantRangeCount = 0,
-        pPushConstantRanges = nil,
+        pushConstantRangeCount = 1,
+        pPushConstantRanges = &push_constant,
     }
 
     // Create the pipeline layout
