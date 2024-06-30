@@ -178,6 +178,10 @@ vk_object_shader_create :: proc(window_context: ^Vulkan_Window_Context,
 vk_object_shader_destroy :: proc(shader: ^Vulkan_Object_Shader) {
     logical_device := global_context.device.logical_device
 
+    // Destroy global descriptor set layout
+    vk.DestroyDescriptorSetLayout(logical_device, shader.global_descriptor_set_layout,
+                                  global_context.allocator)
+
     // Destroy uniform buffer
     vk_buffer_destroy(&shader.global_ubo_buffer)
 
