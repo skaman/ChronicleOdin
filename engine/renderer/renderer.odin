@@ -43,7 +43,7 @@ Renderer_Backend :: struct {
 
 // Global variable to store the current renderer backend
 @(private="file")
-global_renderer_backend : Renderer_Backend
+g_renderer_backend : Renderer_Backend
 
 // Initializes the renderer with the specified backend.
 //
@@ -56,24 +56,24 @@ global_renderer_backend : Renderer_Backend
 init :: proc(backend: rt.Renderer_Backend_Type, app_name: string) -> b8 {
     switch backend {
         case .Vulkan:
-            global_renderer_backend.init = vulkan.init
-            global_renderer_backend.destroy = vulkan.destroy
-            global_renderer_backend.init_window = vulkan.init_window
-            global_renderer_backend.destroy_window = vulkan.destroy_window
-            global_renderer_backend.resize_window = vulkan.resize_window
-            global_renderer_backend.begin_frame = vulkan.begin_frame
-            global_renderer_backend.end_frame = vulkan.end_frame
-            global_renderer_backend.update_global_state = vulkan.update_global_state
-            global_renderer_backend.update_object = vulkan.update_object
+            g_renderer_backend.init = vulkan.init
+            g_renderer_backend.destroy = vulkan.destroy
+            g_renderer_backend.init_window = vulkan.init_window
+            g_renderer_backend.destroy_window = vulkan.destroy_window
+            g_renderer_backend.resize_window = vulkan.resize_window
+            g_renderer_backend.begin_frame = vulkan.begin_frame
+            g_renderer_backend.end_frame = vulkan.end_frame
+            g_renderer_backend.update_global_state = vulkan.update_global_state
+            g_renderer_backend.update_object = vulkan.update_object
     }
 
-    return global_renderer_backend.init(app_name)
+    return g_renderer_backend.init(app_name)
 }
 
 // Destroys the renderer backend.
 destroy :: proc() {
-    global_renderer_backend.destroy()
-    global_renderer_backend = {}
+    g_renderer_backend.destroy()
+    g_renderer_backend = {}
 }
 
 // Initializes a window with the specified parameters.
@@ -88,7 +88,7 @@ destroy :: proc() {
 //   (Window_Context_Id, b8) - The window context ID and a boolean indicating success.
 init_window :: proc(instance: platform.Instance, handle: platform.Handle,
                     width: u32, height: u32) -> (rt.Window_Context_Handle, b8) {
-    return global_renderer_backend.init_window(instance, handle, width, height)
+    return g_renderer_backend.init_window(instance, handle, width, height)
 }
 
 // Destroys the specified window.
@@ -98,7 +98,7 @@ init_window :: proc(instance: platform.Instance, handle: platform.Handle,
 destroy_window :: proc(window_context_handle: rt.Window_Context_Handle) {
     assert(window_context_handle != nil, "Invalid window context handle")
 
-    global_renderer_backend.destroy_window(window_context_handle)
+    g_renderer_backend.destroy_window(window_context_handle)
 }
 
 // Resizes the specified window.
@@ -110,7 +110,7 @@ destroy_window :: proc(window_context_handle: rt.Window_Context_Handle) {
 resize_window :: proc(window_context_handle: rt.Window_Context_Handle, width: u32, height: u32) {
     assert(window_context_handle != nil, "Invalid window context handle")
     
-    global_renderer_backend.resize_window(window_context_handle, width, height)
+    g_renderer_backend.resize_window(window_context_handle, width, height)
 }
 
 // Begins rendering a frame for the specified window.
@@ -125,7 +125,7 @@ resize_window :: proc(window_context_handle: rt.Window_Context_Handle, width: u3
 begin_frame :: proc(window_context_handle: rt.Window_Context_Handle, delta_time: f32) -> b8 {
     assert(window_context_handle != nil, "Invalid window context handle")
     
-    return global_renderer_backend.begin_frame(window_context_handle, delta_time)
+    return g_renderer_backend.begin_frame(window_context_handle, delta_time)
 }
 
 // Ends rendering a frame for the specified window.
@@ -140,7 +140,7 @@ begin_frame :: proc(window_context_handle: rt.Window_Context_Handle, delta_time:
 end_frame :: proc(window_context_handle: rt.Window_Context_Handle, delta_time: f32) -> b8 {
     assert(window_context_handle != nil, "Invalid window context handle")
     
-    return global_renderer_backend.end_frame(window_context_handle, delta_time)
+    return g_renderer_backend.end_frame(window_context_handle, delta_time)
 }
 
 // Updates the global state of the ubo
@@ -158,12 +158,12 @@ update_global_state :: proc(window_context_handle: rt.Window_Context_Handle,
                             ambient_color: linalg.Vector4f32, mode: i32) {
     assert(window_context_handle != nil, "Invalid window context handle")
 
-    global_renderer_backend.update_global_state(window_context_handle, projection, view,
+    g_renderer_backend.update_global_state(window_context_handle, projection, view,
                                                 view_position, ambient_color, mode)
 }
 
 update_object :: proc(window_context_handle: rt.Window_Context_Handle, model: linalg.Matrix4f32) {
     assert(window_context_handle != nil, "Invalid window context handle")
 
-    global_renderer_backend.update_object(window_context_handle, model)
+    g_renderer_backend.update_object(window_context_handle, model)
 }

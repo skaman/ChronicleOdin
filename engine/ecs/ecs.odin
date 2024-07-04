@@ -16,15 +16,15 @@ Record :: struct {
 
 // Index of archetype and index for each entity.
 @private
-global_records: map[Entity_Id]Record
+g_records: map[Entity_Id]Record
 
 // Index of archetype for a given set of components. 
 @(private="file")
-global_archetypes: utils.Hash_Table([]typeid, ^Archetype)
+g_archetypes: utils.Hash_Table([]typeid, ^Archetype)
 
 // The global entity ID counter.
 @(private="file")
-global_entity_id_counter: u32 = 0
+g_entity_id_counter: Entity_Id = 0
 
 // The FNV-1a offset basis.
 @(private="file")
@@ -81,13 +81,13 @@ archetype_eq_proc :: proc(a, b: []typeid) -> bool {
 //   ^Archetype - The archetype for the given components.
 @(private="file")
 get_or_create_archetype :: proc(components: []typeid) -> ^Archetype {
-    archetype := utils.get_from_hash_table(&global_archetypes, components)
+    archetype := utils.get_from_hash_table(&g_archetypes, components)
     if archetype == nil {
         archetype = new(Archetype)
         columns := make([]typeid, len(components))
         copy(columns[:], components[:])
         init_archetype(archetype, columns)
-        utils.add_to_hash_table(&global_archetypes, columns, archetype)
+        utils.add_to_hash_table(&g_archetypes, columns, archetype)
     }
     return archetype
 }
@@ -152,7 +152,7 @@ prepare_remove_components_from_archetype :: proc(archetype: ^Archetype, componen
 add_archetype_to_related :: proc(archetype: ^Archetype) {
     assert(archetype != nil, "Archetype must not be nil")
 
-    it := utils.init_hash_table_iterator(&global_archetypes)
+    it := utils.init_hash_table_iterator(&g_archetypes)
     for utils.next_hash_table_iterator(&it) {
         if (archetype == it.value) {
             continue
@@ -172,7 +172,7 @@ add_archetype_to_related :: proc(archetype: ^Archetype) {
 remove_archetype_from_related :: proc(archetype: ^Archetype) {
     assert(archetype != nil, "Archetype must not be nil")
 
-    it := utils.init_hash_table_iterator(&global_archetypes)
+    it := utils.init_hash_table_iterator(&g_archetypes)
     for utils.next_hash_table_iterator(&it) {
         if (archetype == it.value) {
             continue
@@ -185,21 +185,21 @@ remove_archetype_from_related :: proc(archetype: ^Archetype) {
 
 // Initializes the ECS module.
 init :: proc() {
-    global_records = make(map[Entity_Id]Record)
-    utils.init_hash_table(&global_archetypes, archetype_hash_proc, archetype_eq_proc)
+    g_records = make(map[Entity_Id]Record)
+    utils.init_hash_table(&g_archetypes, archetype_hash_proc, archetype_eq_proc)
 }
 
 // Destroys the ECS module.
 destroy :: proc() {
-    it := utils.init_hash_table_iterator(&global_archetypes)
+    it := utils.init_hash_table_iterator(&g_archetypes)
     for utils.next_hash_table_iterator(&it) {
         delete(it.key)
         destroy_archetype(it.value)
         free(it.value)
     }
     
-    utils.destroy_hash_table(&global_archetypes)
-    delete(global_records)
+    utils.destroy_hash_table(&g_archetypes)
+    delete(g_records)
 }
 
 // Creates a new entity.
@@ -219,8 +219,8 @@ create_entity :: proc(components: []typeid = nil) -> Entity_Id {
 
     archetype := get_or_create_archetype(all_components)
 
-    entity := Entity_Id(global_entity_id_counter)
-    global_entity_id_counter += 1
+    entity := g_entity_id_counter
+    g_entity_id_counter += 1
 
     add_row_to_archetype(archetype, entity)
 
@@ -232,10 +232,10 @@ create_entity :: proc(components: []typeid = nil) -> Entity_Id {
 // Parameters:
 //   entity: Entity_Id - The entity to delete.
 delete_entity :: proc(entity: Entity_Id) {
-    record, ok := global_records[entity]
+    record, ok := g_records[entity]
     if ok {
         remove_row_from_archetype(record.archetype, record.index)
-        delete_key(&global_records, entity)
+        delete_key(&g_records, entity)
     }
 }
 
@@ -247,7 +247,7 @@ delete_entity :: proc(entity: Entity_Id) {
 // Returns:
 //   bool - True if the entity exists, false otherwise.
 exists_entity :: proc(entity: Entity_Id) -> bool {
-    _, ok := global_records[entity]
+    _, ok := g_records[entity]
     return ok
 }
 
@@ -259,7 +259,7 @@ exists_entity :: proc(entity: Entity_Id) -> bool {
 add_components :: proc(entity: Entity_Id, components: []typeid) {
     assert(len(components) > 0, "Components must not be empty")
 
-    record, ok := global_records[entity]
+    record, ok := g_records[entity]
     if ok {
         current_artetype := record.archetype
         current_index := record.index
@@ -270,7 +270,7 @@ add_components :: proc(entity: Entity_Id, components: []typeid) {
 
         new_archetype := get_or_create_archetype(new_components)
         add_row_to_archetype(new_archetype, entity)
-        new_index := global_records[entity].index
+        new_index := g_records[entity].index
         for column in current_artetype.columns {
             if column.component == typeid_of(Entity_Id) {
                 continue
@@ -297,7 +297,7 @@ add_component :: #force_inline proc(entity: Entity_Id, component: typeid) {
 //   entity: Entity_Id - The entity to remove components from.
 //   components: []typeid - The components to remove.
 remove_component :: proc(entity: Entity_Id, component: typeid) {
-    record, ok := global_records[entity]
+    record, ok := g_records[entity]
     if ok {
         current_artetype := record.archetype
         current_index := record.index
@@ -308,7 +308,7 @@ remove_component :: proc(entity: Entity_Id, component: typeid) {
 
         new_archetype := get_or_create_archetype(new_components)
         add_row_to_archetype(new_archetype, entity)
-        new_index := global_records[entity].index
+        new_index := g_records[entity].index
         for column in new_archetype.columns {
             if column.component == typeid_of(Entity_Id) {
                 continue
@@ -329,7 +329,7 @@ remove_component :: proc(entity: Entity_Id, component: typeid) {
 // Returns:
 //   bool - True if the entity has the component, false otherwise.
 has_component :: #force_inline proc "contextless" (entity: Entity_Id, component: typeid) -> bool {
-    record, ok := global_records[entity]
+    record, ok := g_records[entity]
     if ok {
         return get_ptr_from_archetype(record.archetype, record.index, component) != nil
     }
@@ -347,7 +347,7 @@ set_component_by_ptr :: #force_inline proc "contextless" (entity: Entity_Id, com
     //assert(data != nil, "Data must not be nil")
     //assert(size > 0, "Size must be greater than 0")
 
-    record, ok := global_records[entity]
+    record, ok := g_records[entity]
     if ok {
         set_ptr_in_archetype(record.archetype, record.index, component, data, size)
     }
@@ -376,7 +376,7 @@ set_component :: proc{set_component_by_value, set_component_by_ptr}
 // Returns:
 //   rawptr - The raw pointer to the component data.
 get_component_by_typeid :: #force_inline proc "contextless" (entity: Entity_Id, component: typeid) -> rawptr {
-    record, ok := global_records[entity]
+    record, ok := g_records[entity]
     if ok {
         return get_ptr_from_archetype(record.archetype, record.index, component)
     }
@@ -392,7 +392,7 @@ get_component_by_typeid :: #force_inline proc "contextless" (entity: Entity_Id, 
 // Returns:
 //   ^Type - The value of the component.
 get_component_by_type :: #force_inline proc "contextless" (entity: Entity_Id, $Type: typeid) -> ^Type {
-    record, ok := global_records[entity]
+    record, ok := g_records[entity]
     if ok {
         return get_value_from_archetype(record.archetype, record.index, Type)
     }

@@ -16,7 +16,7 @@ import "../../utils"
 
 // Contains the global context for Vulkan, including Vulkan instance and debug context.
 @private
-global_context : Vulkan_Context
+g_context : Vulkan_Context
 
 // Callback function for Vulkan debug utils messenger.
 //
@@ -61,7 +61,7 @@ vk_debug_utils_messenger_callback :: proc "system" (
 @(private="file")
 vk_find_memory_index :: proc(type_filter: u32, property_flags: vk.MemoryPropertyFlags) -> u32 {
     memory_properties: vk.PhysicalDeviceMemoryProperties
-    vk.GetPhysicalDeviceMemoryProperties(global_context.device.physical_device, &memory_properties)
+    vk.GetPhysicalDeviceMemoryProperties(g_context.device.physical_device, &memory_properties)
 
     for i in 0..<memory_properties.memoryTypeCount {
         // Check each memory type to see if its bit is set to 1
@@ -106,11 +106,11 @@ vk_create_command_buffers :: proc(window_context: ^Vulkan_Window_Context) {
 
     for i in 0..<len(window_context.swapchain.images) {
         if window_context.graphics_command_buffers[i].handle != nil {
-            vk_command_buffer_free(global_context.device.graphics_command_pool,
+            vk_command_buffer_free(g_context.device.graphics_command_pool,
                                    &window_context.graphics_command_buffers[i])
         }
         window_context.graphics_command_buffers[i] = {}
-        vk_command_buffer_allocate(global_context.device.graphics_command_pool,
+        vk_command_buffer_allocate(g_context.device.graphics_command_pool,
                                    true,
                                    &window_context.graphics_command_buffers[i])
     }
@@ -126,7 +126,7 @@ vk_create_command_buffers :: proc(window_context: ^Vulkan_Window_Context) {
 vk_destroy_command_buffers :: proc(window_context: ^Vulkan_Window_Context) {
     for i in 0..<len(window_context.swapchain.images) {
         if window_context.graphics_command_buffers[i].handle != nil {
-            vk_command_buffer_free(global_context.device.graphics_command_pool,
+            vk_command_buffer_free(g_context.device.graphics_command_pool,
                                     &window_context.graphics_command_buffers[i])
             window_context.graphics_command_buffers[i].handle = nil
         }
@@ -191,7 +191,7 @@ vk_recreate_swapchain :: proc(window_context: ^Vulkan_Window_Context) -> b8 {
     window_context.recreating_swapchain = true
 
     // Wait for any operations to complete.
-    vk.DeviceWaitIdle(global_context.device.logical_device)
+    vk.DeviceWaitIdle(g_context.device.logical_device)
 
     // Clear these out just in case.
     for i in 0..<len(window_context.images_in_flight) {
@@ -199,10 +199,10 @@ vk_recreate_swapchain :: proc(window_context: ^Vulkan_Window_Context) -> b8 {
     }
 
     // Requery support.
-    vk_query_swapchain_support(global_context.device.physical_device,
+    vk_query_swapchain_support(g_context.device.physical_device,
                                window_context.surface,
-                               &global_context.device.swapchain_support)
-    vk_device_detect_depth_format(&global_context.device)
+                               &g_context.device.swapchain_support)
+    vk_device_detect_depth_format(&g_context.device)
 
     // Recreate the swapchain.
     vk_swapchain_recreate(window_context,
@@ -223,7 +223,7 @@ vk_recreate_swapchain :: proc(window_context: ^Vulkan_Window_Context) -> b8 {
 
     // Cleanup swapchain
     for i in 0..<len(window_context.swapchain.images) {
-        vk_command_buffer_free(global_context.device.graphics_command_pool,
+        vk_command_buffer_free(g_context.device.graphics_command_pool,
                                &window_context.graphics_command_buffers[i])
     }
 
@@ -307,10 +307,10 @@ init :: proc(app_name: string) -> b8 {
     vk.load_proc_addresses(proc_address)
 
     // Function pointers
-    global_context.find_memory_index = vk_find_memory_index
+    g_context.find_memory_index = vk_find_memory_index
 
     // TODO: Add a custom allocator
-    global_context.allocator = nil
+    g_context.allocator = nil
 
     app_info := vk.ApplicationInfo{
         sType = vk.StructureType.APPLICATION_INFO,
@@ -384,18 +384,18 @@ init :: proc(app_name: string) -> b8 {
         ppEnabledExtensionNames = raw_data(required_extensions),
     }
 
-    result := vk.CreateInstance(&create_info, global_context.allocator, &global_context.instance)
+    result := vk.CreateInstance(&create_info, g_context.allocator, &g_context.instance)
     if result != vk.Result.SUCCESS {
         log.errorf("Failed to create Vulkan instance: %v", result)
         return false
     }
-    vk.load_proc_addresses_instance(global_context.instance)
+    vk.load_proc_addresses_instance(g_context.instance)
 
     log.debug("Vulkan instance created")
 
     // Debug utils messenger
     when ODIN_DEBUG {
-        global_context.debug_utils_context = context
+        g_context.debug_utils_context = context
 
         debug_utils_create_info := vk.DebugUtilsMessengerCreateInfoEXT{
             sType = vk.StructureType.DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
@@ -404,13 +404,13 @@ init :: proc(app_name: string) -> b8 {
             messageSeverity = {.VERBOSE, .INFO, .WARNING, .ERROR},
             messageType = {.GENERAL, .PERFORMANCE, .VALIDATION},
             pfnUserCallback = vk_debug_utils_messenger_callback,
-            pUserData = &global_context.debug_utils_context,
+            pUserData = &g_context.debug_utils_context,
         }
 
-        result = vk.CreateDebugUtilsMessengerEXT(global_context.instance,
+        result = vk.CreateDebugUtilsMessengerEXT(g_context.instance,
                                                  &debug_utils_create_info,
-                                                 global_context.allocator,
-                                                 &global_context.debug_utils_messenger)
+                                                 g_context.allocator,
+                                                 &g_context.debug_utils_messenger)
         if result != vk.Result.SUCCESS {
             log.errorf("Failed to create Vulkan debug utils messenger: %v", result)
             return false
@@ -428,13 +428,13 @@ destroy :: proc() {
     vk_device_destroy()
 
     when ODIN_DEBUG {
-        vk.DestroyDebugUtilsMessengerEXT(global_context.instance,
-                                         global_context.debug_utils_messenger,
-                                         global_context.allocator)
+        vk.DestroyDebugUtilsMessengerEXT(g_context.instance,
+                                         g_context.debug_utils_messenger,
+                                         g_context.allocator)
         log.debug("Vulkan debug utils messenger destroyed")
     }
 
-    vk.DestroyInstance(global_context.instance, global_context.allocator)
+    vk.DestroyInstance(g_context.instance, g_context.allocator)
     log.debug("Vulkan instance destroyed")
 }
 
@@ -465,7 +465,7 @@ init_window :: proc(instance: platform.Instance, handle: platform.Handle,
     }
 
     // Device creation
-    if global_context.device.physical_device == nil {
+    if g_context.device.physical_device == nil {
         if !vk_device_create(window_context.surface) {
             log.error("Failed to create Vulkan device")
             return {}, false
@@ -507,18 +507,18 @@ init_window :: proc(instance: platform.Instance, handle: platform.Handle,
             pNext = nil,
             flags = {},
         }
-        result := vk.CreateSemaphore(global_context.device.logical_device,
+        result := vk.CreateSemaphore(g_context.device.logical_device,
                                      &semaphore_create_info,
-                                     global_context.allocator,
+                                     g_context.allocator,
                                      &window_context.image_available_semaphores[i])
         if result != vk.Result.SUCCESS {
             log.error("Failed to create image available semaphore")
             return {}, false
         }
 
-        result = vk.CreateSemaphore(global_context.device.logical_device,
+        result = vk.CreateSemaphore(g_context.device.logical_device,
                                     &semaphore_create_info,
-                                    global_context.allocator,
+                                    g_context.allocator,
                                     &window_context.queue_complete_semaphores[i])
         if result != vk.Result.SUCCESS {
             log.error("Failed to create queue complete semaphore")
@@ -566,17 +566,17 @@ init_window :: proc(instance: platform.Instance, handle: platform.Handle,
     indices[4] = 3
     indices[5] = 1
 
-    vk_upload_data_range(global_context.device.graphics_command_pool,
+    vk_upload_data_range(g_context.device.graphics_command_pool,
                          0,
-                         global_context.device.graphics_queue,
+                         g_context.device.graphics_queue,
                          &window_context.object_vertex_buffer,
                          0,
                          size_of(verts),
                          raw_data(&verts))
 
-    vk_upload_data_range(global_context.device.graphics_command_pool,
+    vk_upload_data_range(g_context.device.graphics_command_pool,
                          0,
-                         global_context.device.graphics_queue,
+                         g_context.device.graphics_queue,
                          &window_context.object_index_buffer,
                          0,
                          size_of(indices),
@@ -595,7 +595,7 @@ init_window :: proc(instance: platform.Instance, handle: platform.Handle,
 destroy_window :: proc(window_context_handle: rt.Window_Context_Handle) {
     window_context := (^Vulkan_Window_Context)(window_context_handle)
 
-    vk.DeviceWaitIdle(global_context.device.logical_device)
+    vk.DeviceWaitIdle(g_context.device.logical_device)
 
     // Destroy buffers
     vk_buffer_destroy(&window_context.object_vertex_buffer)
@@ -610,12 +610,12 @@ destroy_window :: proc(window_context_handle: rt.Window_Context_Handle) {
     }
 
     for i in 0..<window_context.swapchain.max_frames_in_flight {
-        vk.DestroySemaphore(global_context.device.logical_device,
+        vk.DestroySemaphore(g_context.device.logical_device,
                             window_context.image_available_semaphores[i],
-                            global_context.allocator)
-        vk.DestroySemaphore(global_context.device.logical_device,
+                            g_context.allocator)
+        vk.DestroySemaphore(g_context.device.logical_device,
                             window_context.queue_complete_semaphores[i],
-                            global_context.allocator)
+                            g_context.allocator)
         vk_fence_destroy(&window_context.in_flight_fences[i])
     }
     if window_context.image_available_semaphores != nil {
@@ -650,7 +650,7 @@ destroy_window :: proc(window_context_handle: rt.Window_Context_Handle) {
     vk_swapchain_destroy(window_context, &window_context.swapchain)
 
     // Destroy Vulkan surface
-    vk.DestroySurfaceKHR(global_context.instance, window_context.surface, global_context.allocator)
+    vk.DestroySurfaceKHR(g_context.instance, window_context.surface, g_context.allocator)
 
     mem.free(window_context)
     log.debug("Vulkan surface destroyed")
@@ -686,7 +686,7 @@ resize_window :: proc(window_context_handle: rt.Window_Context_Handle, width: u3
 //   b8 - True if the frame was successfully begun, otherwise false.
 begin_frame :: proc(window_context_handle: rt.Window_Context_Handle, delta_time: f32) -> b8 {
     window_context := (^Vulkan_Window_Context)(window_context_handle)
-    device := &global_context.device
+    device := &g_context.device
 
     // Check if recreating swap chain and boot out.
     if window_context.recreating_swapchain {
@@ -823,7 +823,7 @@ end_frame :: proc(window_context_handle: rt.Window_Context_Handle, delta_time: f
     flags := [1]vk.PipelineStageFlags{{.COLOR_ATTACHMENT_OUTPUT}}
     submit_info.pWaitDstStageMask = raw_data(&flags)
 
-    result := vk.QueueSubmit(global_context.device.graphics_queue, 1, &submit_info,
+    result := vk.QueueSubmit(g_context.device.graphics_queue, 1, &submit_info,
                              window_context.in_flight_fences[window_context.current_frame].handle)
     if result != vk.Result.SUCCESS {
         error, error_message := vk_result_to_string(result)
@@ -836,8 +836,8 @@ end_frame :: proc(window_context_handle: rt.Window_Context_Handle, delta_time: f
     // Give the image back to the swap chain for presentation
     vk_swapchain_present(window_context,
                          &window_context.swapchain,
-                         global_context.device.graphics_queue,
-                         global_context.device.present_queue,
+                         g_context.device.graphics_queue,
+                         g_context.device.present_queue,
                          window_context.queue_complete_semaphores[window_context.current_frame],
                          window_context.image_index)
 

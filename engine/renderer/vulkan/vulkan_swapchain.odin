@@ -22,7 +22,7 @@ vk_swapchain_create_internal :: proc(window_context: ^Vulkan_Window_Context,
 
     // Choose a swapchain format
     found := false
-    for format in global_context.device.swapchain_support.surface_formats {
+    for format in g_context.device.swapchain_support.surface_formats {
         // Preferred format
         if format.format == vk.Format.B8G8R8A8_UNORM &&
            format.colorSpace == vk.ColorSpaceKHR.SRGB_NONLINEAR {
@@ -34,11 +34,11 @@ vk_swapchain_create_internal :: proc(window_context: ^Vulkan_Window_Context,
 
     if !found {
         // Fallback to the first format
-        swapchain.image_format = global_context.device.swapchain_support.surface_formats[0]
+        swapchain.image_format = g_context.device.swapchain_support.surface_formats[0]
     }
 
     present_mode := vk.PresentModeKHR.FIFO
-    for mode in global_context.device.swapchain_support.present_modes {
+    for mode in g_context.device.swapchain_support.present_modes {
         if mode == vk.PresentModeKHR.MAILBOX {
             present_mode = mode
             break
@@ -46,20 +46,20 @@ vk_swapchain_create_internal :: proc(window_context: ^Vulkan_Window_Context,
     }
 
     // Requery swapchain support
-    if global_context.device.swapchain_support.capabilities.currentExtent.width != math.max(u32) {
-        swapchain_extent = global_context.device.swapchain_support.capabilities.currentExtent
+    if g_context.device.swapchain_support.capabilities.currentExtent.width != math.max(u32) {
+        swapchain_extent = g_context.device.swapchain_support.capabilities.currentExtent
     }
 
     // Clamp to the value allowed by the GPU
-    min := global_context.device.swapchain_support.capabilities.minImageExtent
-    max := global_context.device.swapchain_support.capabilities.maxImageExtent
+    min := g_context.device.swapchain_support.capabilities.minImageExtent
+    max := g_context.device.swapchain_support.capabilities.maxImageExtent
     swapchain_extent.width = math.clamp(swapchain_extent.width, min.width, max.width)
     swapchain_extent.height = math.clamp(swapchain_extent.height, min.height, max.height)
 
-    image_count := global_context.device.swapchain_support.capabilities.minImageCount + 1
-    if global_context.device.swapchain_support.capabilities.maxImageCount > 0 &&
-       image_count > global_context.device.swapchain_support.capabilities.maxImageCount {
-        image_count = global_context.device.swapchain_support.capabilities.maxImageCount
+    image_count := g_context.device.swapchain_support.capabilities.minImageCount + 1
+    if g_context.device.swapchain_support.capabilities.maxImageCount > 0 &&
+       image_count > g_context.device.swapchain_support.capabilities.maxImageCount {
+        image_count = g_context.device.swapchain_support.capabilities.maxImageCount
     }
     swapchain.max_frames_in_flight = u8(image_count - 1)
 
@@ -77,9 +77,9 @@ vk_swapchain_create_internal :: proc(window_context: ^Vulkan_Window_Context,
         imageUsage = {.COLOR_ATTACHMENT},
     }
 
-    if global_context.device.graphics_queue_index != global_context.device.present_queue_index {
-        queue_family_indices := [2]u32{global_context.device.graphics_queue_index,
-                                       global_context.device.present_queue_index}
+    if g_context.device.graphics_queue_index != g_context.device.present_queue_index {
+        queue_family_indices := [2]u32{g_context.device.graphics_queue_index,
+                                       g_context.device.present_queue_index}
         swapchain_create_info.imageSharingMode = vk.SharingMode.CONCURRENT
         swapchain_create_info.queueFamilyIndexCount = 2
         swapchain_create_info.pQueueFamilyIndices = raw_data(&queue_family_indices)
@@ -90,14 +90,14 @@ vk_swapchain_create_internal :: proc(window_context: ^Vulkan_Window_Context,
     }
 
     swapchain_create_info.preTransform =
-         global_context.device.swapchain_support.capabilities.currentTransform
+         g_context.device.swapchain_support.capabilities.currentTransform
     swapchain_create_info.compositeAlpha = {.OPAQUE}
     swapchain_create_info.presentMode = present_mode
     swapchain_create_info.clipped = true
     swapchain_create_info.oldSwapchain = vk.SwapchainKHR(0)
 
-    result := vk.CreateSwapchainKHR(global_context.device.logical_device, &swapchain_create_info,
-                                    global_context.allocator, &swapchain.handle)
+    result := vk.CreateSwapchainKHR(g_context.device.logical_device, &swapchain_create_info,
+                                    g_context.allocator, &swapchain.handle)
     if result != vk.Result.SUCCESS {
         log.errorf("Failed to create swapchain: %v", result)
         return
@@ -108,14 +108,14 @@ vk_swapchain_create_internal :: proc(window_context: ^Vulkan_Window_Context,
 
     // Images
     swapchain_image_count := u32(0)
-    result = vk.GetSwapchainImagesKHR(global_context.device.logical_device, swapchain.handle,
+    result = vk.GetSwapchainImagesKHR(g_context.device.logical_device, swapchain.handle,
                                       &swapchain_image_count, nil)
     if result != vk.Result.SUCCESS {
         log.errorf("Failed to get swapchain image count: %v", result)
         return
     }
     swapchain.images = make([]vk.Image, swapchain_image_count)
-    result = vk.GetSwapchainImagesKHR(global_context.device.logical_device, swapchain.handle,
+    result = vk.GetSwapchainImagesKHR(g_context.device.logical_device, swapchain.handle,
                                       &swapchain_image_count, raw_data(swapchain.images))
     if result != vk.Result.SUCCESS {
         log.errorf("Failed to get swapchain images: %v", result)
@@ -141,8 +141,8 @@ vk_swapchain_create_internal :: proc(window_context: ^Vulkan_Window_Context,
             },
         }
 
-        result = vk.CreateImageView(global_context.device.logical_device, &image_view_create_info,
-                                    global_context.allocator, &swapchain.image_views[i])
+        result = vk.CreateImageView(g_context.device.logical_device, &image_view_create_info,
+                                    g_context.allocator, &swapchain.image_views[i])
         if result != vk.Result.SUCCESS {
             log.errorf("Failed to create image view: %v", result)
             return
@@ -150,15 +150,15 @@ vk_swapchain_create_internal :: proc(window_context: ^Vulkan_Window_Context,
     }
 
     // Depth resources
-    if !vk_device_detect_depth_format(&global_context.device) {
-        global_context.device.depth_format = vk.Format.UNDEFINED
+    if !vk_device_detect_depth_format(&g_context.device) {
+        g_context.device.depth_format = vk.Format.UNDEFINED
         log.error("Failed to find a suitable depth format")
         return
     }
 
     // Create depth image and its view
     vk_image_create(.D2, swapchain_extent.width, swapchain_extent.height,
-                    global_context.device.depth_format, .OPTIMAL, {.DEPTH_STENCIL_ATTACHMENT},
+                    g_context.device.depth_format, .OPTIMAL, {.DEPTH_STENCIL_ATTACHMENT},
                     {.DEVICE_LOCAL}, true, {.DEPTH}, &swapchain.depth_attachment)
 
     log.info("Swapchain created successfully")
@@ -172,17 +172,17 @@ vk_swapchain_create_internal :: proc(window_context: ^Vulkan_Window_Context,
 @(private="file")
 vk_swapchain_destroy_internal :: proc(window_context: ^Vulkan_Window_Context,
                                       swapchain: ^Vulkan_Swapchain) {
-    vk.DeviceWaitIdle(global_context.device.logical_device)
+    vk.DeviceWaitIdle(g_context.device.logical_device)
 
     vk_image_destroy(&swapchain.depth_attachment)
 
     // Only destroys the image views, the images are destroyed with the swapchain
     for view in swapchain.image_views {
-        vk.DestroyImageView(global_context.device.logical_device, view, global_context.allocator)
+        vk.DestroyImageView(g_context.device.logical_device, view, g_context.allocator)
     }
 
-    vk.DestroySwapchainKHR(global_context.device.logical_device, swapchain.handle,
-                           global_context.allocator)
+    vk.DestroySwapchainKHR(g_context.device.logical_device, swapchain.handle,
+                           g_context.allocator)
 
     delete(swapchain.images)
     delete(swapchain.image_views)
@@ -245,7 +245,7 @@ vk_swapchain_acquire_next_image_index :: proc(window_context: ^Vulkan_Window_Con
                                               image_available_semaphore: vk.Semaphore,
                                               fence: vk.Fence,
                                               out_image_index: ^u32) -> b8 {
-    result := vk.AcquireNextImageKHR(global_context.device.logical_device,
+    result := vk.AcquireNextImageKHR(g_context.device.logical_device,
                                      swapchain.handle,
                                      timeout_ns,
                                      image_available_semaphore,

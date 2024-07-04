@@ -38,9 +38,9 @@ vk_create_shader_module :: proc(name: string,
     shader_stages[stage_index].create_info.codeSize = len(file_buffer);
     shader_stages[stage_index].create_info.pCode = (^u32)(&file_buffer[0]);
 
-    result := vk.CreateShaderModule(global_context.device.logical_device,
+    result := vk.CreateShaderModule(g_context.device.logical_device,
                                     &shader_stages[stage_index].create_info,
-                                    global_context.allocator,
+                                    g_context.allocator,
                                     &shader_stages[stage_index].handle)
     if result != .SUCCESS {
         log.errorf("Failed to create shader module: %v", result)

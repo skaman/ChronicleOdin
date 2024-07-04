@@ -19,9 +19,9 @@ vk_fence_create :: proc(create_signaled: b8, out_fence: ^Vulkan_Fence) {
         flags = create_signaled ? {.SIGNALED} : {},
     }
 
-    result := vk.CreateFence(global_context.device.logical_device,
+    result := vk.CreateFence(g_context.device.logical_device,
                              &create_info,
-                             global_context.allocator,
+                             g_context.allocator,
                              &out_fence.handle)
     if result != .SUCCESS {
         log.error("Failed to create fence")
@@ -36,9 +36,9 @@ vk_fence_create :: proc(create_signaled: b8, out_fence: ^Vulkan_Fence) {
 @private
 vk_fence_destroy :: proc(fence: ^Vulkan_Fence) {
     if fence.handle != 0 {
-        vk.DestroyFence(global_context.device.logical_device,
+        vk.DestroyFence(g_context.device.logical_device,
                         fence.handle,
-                        global_context.allocator)
+                        g_context.allocator)
         fence.handle = 0
     }
 
@@ -56,7 +56,7 @@ vk_fence_destroy :: proc(fence: ^Vulkan_Fence) {
 @private
 vk_fence_wait :: proc(fence: ^Vulkan_Fence, timeout_ns: u64) -> b8 {
     if !fence.is_signaled {
-        result := vk.WaitForFences(global_context.device.logical_device,
+        result := vk.WaitForFences(g_context.device.logical_device,
                                    1,
                                    &fence.handle,
                                    true,
@@ -92,7 +92,7 @@ vk_fence_wait :: proc(fence: ^Vulkan_Fence, timeout_ns: u64) -> b8 {
 @private
 vk_fence_reset :: proc(fence: ^Vulkan_Fence) {
     if fence.is_signaled {
-        result := vk.ResetFences(global_context.device.logical_device,
+        result := vk.ResetFences(g_context.device.logical_device,
             1,
             &fence.handle)
         if result != .SUCCESS {

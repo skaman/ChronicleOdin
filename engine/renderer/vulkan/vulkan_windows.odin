@@ -30,7 +30,7 @@ vk_platform_create_vulkan_surface :: proc(window_context: ^Vulkan_Window_Context
         hwnd = win32.HWND(window_context.handle),
     }
 
-    result := vk.CreateWin32SurfaceKHR(global_context.instance, &create_info, nil,
+    result := vk.CreateWin32SurfaceKHR(g_context.instance, &create_info, nil,
                                        &window_context.surface)
     if result != vk.Result.SUCCESS {
         log.errorf("Failed to create Vulkan surface: %v", result)

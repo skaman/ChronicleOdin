@@ -46,9 +46,9 @@ vk_object_shader_create :: proc(window_context: ^Vulkan_Window_Context,
         pBindings = &global_ubo_layout_binding,
     }
 
-    result := vk.CreateDescriptorSetLayout(global_context.device.logical_device,
+    result := vk.CreateDescriptorSetLayout(g_context.device.logical_device,
                                            &global_layout_create_info,
-                                           global_context.allocator,
+                                           g_context.allocator,
                                            &out_shader.global_descriptor_set_layout)
     if result != .SUCCESS {
         log.error("Failed to create global descriptor set layout")
@@ -68,9 +68,9 @@ vk_object_shader_create :: proc(window_context: ^Vulkan_Window_Context,
         maxSets = u32(len(window_context.swapchain.images)),
     }
 
-    result = vk.CreateDescriptorPool(global_context.device.logical_device,
+    result = vk.CreateDescriptorPool(g_context.device.logical_device,
                                      &global_pool_info,
-                                     global_context.allocator,
+                                     g_context.allocator,
                                      &out_shader.global_descriptor_pool)
     if result != .SUCCESS {
         log.error("Failed to create global descriptor pool")
@@ -160,7 +160,7 @@ vk_object_shader_create :: proc(window_context: ^Vulkan_Window_Context,
         pSetLayouts = &global_layouts[0],
     }
 
-    result = vk.AllocateDescriptorSets(global_context.device.logical_device,
+    result = vk.AllocateDescriptorSets(g_context.device.logical_device,
                                        &alloc_info,
                                        &out_shader.global_descriptor_sets[0])
     if result != .SUCCESS {
@@ -176,11 +176,11 @@ vk_object_shader_create :: proc(window_context: ^Vulkan_Window_Context,
 // Parameters:
 //   shader: ^Vulkan_Object_Shader - Pointer to the object shader to be destroyed.
 vk_object_shader_destroy :: proc(shader: ^Vulkan_Object_Shader) {
-    logical_device := global_context.device.logical_device
+    logical_device := g_context.device.logical_device
 
     // Destroy global descriptor set layout
     vk.DestroyDescriptorSetLayout(logical_device, shader.global_descriptor_set_layout,
-                                  global_context.allocator)
+                                  g_context.allocator)
 
     // Destroy uniform buffer
     vk_buffer_destroy(&shader.global_ubo_buffer)
@@ -190,12 +190,12 @@ vk_object_shader_destroy :: proc(shader: ^Vulkan_Object_Shader) {
 
     // Destroy global descriptor pool
     vk.DestroyDescriptorPool(logical_device, shader.global_descriptor_pool,
-                             global_context.allocator)
+                             g_context.allocator)
 
     // Destroy shader modules
     for i in 0..<OBJECT_SHADER_STAGE_COUNT {
         vk.DestroyShaderModule(logical_device, shader.stages[i].handle,
-                                global_context.allocator)
+                                g_context.allocator)
         shader.stages[i].handle = 0
     }
 }
@@ -247,7 +247,7 @@ vk_object_shader_update_global_state :: proc(window_context: ^Vulkan_Window_Cont
         pTexelBufferView = nil,
     }
 
-    vk.UpdateDescriptorSets(global_context.device.logical_device,
+    vk.UpdateDescriptorSets(g_context.device.logical_device,
                             1, &write_descriptor_set, 0, nil)
 
     // Bind the global descriptor set to be updated

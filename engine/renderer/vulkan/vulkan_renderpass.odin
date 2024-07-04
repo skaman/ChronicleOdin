@@ -58,7 +58,7 @@ vk_render_pass_create :: proc(window_context: ^Vulkan_Window_Context,
 
     // Depth attachment, if there is one
     attachment_descriptions[1] = vk.AttachmentDescription{
-        format = global_context.device.depth_format,
+        format = g_context.device.depth_format,
         samples = {._1},
         loadOp = .CLEAR,
         storeOp = .DONT_CARE,
@@ -115,9 +115,9 @@ vk_render_pass_create :: proc(window_context: ^Vulkan_Window_Context,
         flags = {},
     }
 
-    result := vk.CreateRenderPass(global_context.device.logical_device,
+    result := vk.CreateRenderPass(g_context.device.logical_device,
                                   &render_pass_create_info,
-                                  global_context.allocator,
+                                  g_context.allocator,
                                   &out_render_pass.handle)
     if result != .SUCCESS {
         log.error("Failed to create render pass")
@@ -132,9 +132,9 @@ vk_render_pass_create :: proc(window_context: ^Vulkan_Window_Context,
 @private
 vk_render_pass_destroy :: proc(render_pass: ^Vulkan_Render_Pass) {
     if render_pass.handle != 0 {
-        vk.DestroyRenderPass(global_context.device.logical_device,
+        vk.DestroyRenderPass(g_context.device.logical_device,
                              render_pass.handle,
-                             global_context.allocator)
+                             g_context.allocator)
         render_pass.handle = 0
     }
 }

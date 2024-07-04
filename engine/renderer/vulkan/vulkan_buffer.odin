@@ -35,9 +35,9 @@ vk_buffer_create :: proc(size: u64,
         sharingMode = .EXCLUSIVE,   // NOTE: only used in one queue
     }
 
-    result := vk.CreateBuffer(global_context.device.logical_device,
+    result := vk.CreateBuffer(g_context.device.logical_device,
                               &buffer_create_info,
-                              global_context.allocator,
+                              g_context.allocator,
                               &out_buffer.handle)
     if result != .SUCCESS {
         log.error("Failed to create buffer")
@@ -46,10 +46,10 @@ vk_buffer_create :: proc(size: u64,
     
     // Memory requirements
     memory_requirements: vk.MemoryRequirements
-    vk.GetBufferMemoryRequirements(global_context.device.logical_device,
+    vk.GetBufferMemoryRequirements(g_context.device.logical_device,
                                    out_buffer.handle,
                                    &memory_requirements)
-    out_buffer.memory_index = global_context.find_memory_index(memory_requirements.memoryTypeBits,
+    out_buffer.memory_index = g_context.find_memory_index(memory_requirements.memoryTypeBits,
                                                                out_buffer.memory_property_flags)
     if out_buffer.memory_index == math.max(u32) {
         log.error("Failed to find memory index")
@@ -62,9 +62,9 @@ vk_buffer_create :: proc(size: u64,
         allocationSize = memory_requirements.size,
         memoryTypeIndex = out_buffer.memory_index,
     }
-    result = vk.AllocateMemory(global_context.device.logical_device,
+    result = vk.AllocateMemory(g_context.device.logical_device,
                                &memory_allocate_info,
-                               global_context.allocator,
+                               g_context.allocator,
                                &out_buffer.memory)
     if result != .SUCCESS {
         log.error("Failed to allocate memory")
@@ -86,16 +86,16 @@ vk_buffer_create :: proc(size: u64,
 @private
 vk_buffer_destroy :: proc(buffer: ^Vulkan_Buffer) {
     if buffer.memory != 0 {
-        vk.FreeMemory(global_context.device.logical_device,
+        vk.FreeMemory(g_context.device.logical_device,
                       buffer.memory,
-                      global_context.allocator)
+                      g_context.allocator)
         buffer.memory = 0
     }
 
     if buffer.handle != 0 {
-        vk.DestroyBuffer(global_context.device.logical_device,
+        vk.DestroyBuffer(g_context.device.logical_device,
                          buffer.handle,
-                         global_context.allocator)
+                         g_context.allocator)
         buffer.handle = 0
     }
 
@@ -127,9 +127,9 @@ vk_buffer_resize :: proc(new_size: u64,
     }
 
     new_buffer: vk.Buffer
-    result := vk.CreateBuffer(global_context.device.logical_device,
+    result := vk.CreateBuffer(g_context.device.logical_device,
                               &buffer_info,
-                              global_context.allocator,
+                              g_context.allocator,
                               &new_buffer)
     if result != .SUCCESS {
         log.error("Failed to create new buffer")
@@ -138,7 +138,7 @@ vk_buffer_resize :: proc(new_size: u64,
 
     // Memory requirements
     memory_requirements: vk.MemoryRequirements
-    vk.GetBufferMemoryRequirements(global_context.device.logical_device,
+    vk.GetBufferMemoryRequirements(g_context.device.logical_device,
                                    new_buffer,
                                    &memory_requirements)
 
@@ -150,9 +150,9 @@ vk_buffer_resize :: proc(new_size: u64,
     }
 
     new_memory: vk.DeviceMemory
-    result = vk.AllocateMemory(global_context.device.logical_device,
+    result = vk.AllocateMemory(g_context.device.logical_device,
                                &memory_allocate_info,
-                               global_context.allocator,
+                               g_context.allocator,
                                &new_memory)
     if result != .SUCCESS {
         log.error("Failed to allocate new memory")
@@ -160,7 +160,7 @@ vk_buffer_resize :: proc(new_size: u64,
     }
 
     // Bind the new memory
-    result = vk.BindBufferMemory(global_context.device.logical_device,
+    result = vk.BindBufferMemory(g_context.device.logical_device,
                                  new_buffer,
                                  new_memory,
                                  0)
@@ -175,16 +175,16 @@ vk_buffer_resize :: proc(new_size: u64,
 
     // Destroy old buffer
     if buffer.memory != 0 {
-        vk.FreeMemory(global_context.device.logical_device,
+        vk.FreeMemory(g_context.device.logical_device,
                       buffer.memory,
-                      global_context.allocator)
+                      g_context.allocator)
         buffer.memory = 0
     }
 
     if buffer.handle != 0 {
-        vk.DestroyBuffer(global_context.device.logical_device,
+        vk.DestroyBuffer(g_context.device.logical_device,
                          buffer.handle,
-                         global_context.allocator)
+                         g_context.allocator)
         buffer.handle = 0
     }
 
@@ -203,7 +203,7 @@ vk_buffer_resize :: proc(new_size: u64,
 //   offset: u64 - The offset to bind the buffer to.
 @private
 vk_buffer_bind :: proc(buffer: ^Vulkan_Buffer, offset: u64) {
-    result := vk.BindBufferMemory(global_context.device.logical_device,
+    result := vk.BindBufferMemory(g_context.device.logical_device,
                                   buffer.handle,
                                   buffer.memory,
                                   vk.DeviceSize(offset))
@@ -225,7 +225,7 @@ vk_buffer_bind :: proc(buffer: ^Vulkan_Buffer, offset: u64) {
 vk_buffer_lock_memory :: proc(buffer: ^Vulkan_Buffer, offset: u64, size: u64,
                               flags: vk.MemoryMapFlags) -> rawptr {
     data: rawptr
-    result := vk.MapMemory(global_context.device.logical_device,
+    result := vk.MapMemory(g_context.device.logical_device,
                            buffer.memory,
                            vk.DeviceSize(offset),
                            vk.DeviceSize(size),
@@ -245,7 +245,7 @@ vk_buffer_lock_memory :: proc(buffer: ^Vulkan_Buffer, offset: u64, size: u64,
 //   buffer: ^Vulkan_Buffer - Pointer to the Vulkan buffer to unlock.
 @private
 vk_buffer_unlock_memory :: proc(buffer: ^Vulkan_Buffer) {
-    vk.UnmapMemory(global_context.device.logical_device, buffer.memory)
+    vk.UnmapMemory(g_context.device.logical_device, buffer.memory)
 }
 
 // Loads data into a Vulkan buffer.
@@ -260,7 +260,7 @@ vk_buffer_unlock_memory :: proc(buffer: ^Vulkan_Buffer) {
 vk_buffer_load_data :: proc(buffer: ^Vulkan_Buffer, offset: u64, size: u64,
                             flags: vk.MemoryMapFlags, data: rawptr) {
     data_ptr: rawptr
-    result := vk.MapMemory(global_context.device.logical_device,
+    result := vk.MapMemory(g_context.device.logical_device,
                            buffer.memory,
                            vk.DeviceSize(offset),
                            vk.DeviceSize(size),
@@ -273,7 +273,7 @@ vk_buffer_load_data :: proc(buffer: ^Vulkan_Buffer, offset: u64, size: u64,
 
     mem.copy(data_ptr, data, int(size))
 
-    vk.UnmapMemory(global_context.device.logical_device, buffer.memory)
+    vk.UnmapMemory(g_context.device.logical_device, buffer.memory)
 }
 
 // Copies data from one Vulkan buffer to another.

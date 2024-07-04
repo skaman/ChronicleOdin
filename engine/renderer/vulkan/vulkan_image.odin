@@ -46,8 +46,8 @@ vk_image_create :: proc(image_type: vk.ImageType, width: u32, height: u32, forma
         pQueueFamilyIndices = nil,
     }
 
-    result := vk.CreateImage(global_context.device.logical_device, &create_info,
-                             global_context.allocator, &out_image.handle)
+    result := vk.CreateImage(g_context.device.logical_device, &create_info,
+                             g_context.allocator, &out_image.handle)
     if result != vk.Result.SUCCESS {
         log.errorf("Failed to create image: %v", result)
         return
@@ -55,10 +55,10 @@ vk_image_create :: proc(image_type: vk.ImageType, width: u32, height: u32, forma
 
     // Query memory requirements
     memory_requirements := vk.MemoryRequirements{}
-    vk.GetImageMemoryRequirements(global_context.device.logical_device, out_image.handle,
+    vk.GetImageMemoryRequirements(g_context.device.logical_device, out_image.handle,
                                   &memory_requirements)
 
-    memory_type := global_context.find_memory_index(memory_requirements.memoryTypeBits,
+    memory_type := g_context.find_memory_index(memory_requirements.memoryTypeBits,
                                                     memory_flags)
     if memory_type == math.max(u32) {
         log.error("Failed to find suitable memory type")
@@ -72,15 +72,15 @@ vk_image_create :: proc(image_type: vk.ImageType, width: u32, height: u32, forma
         allocationSize = memory_requirements.size,
         memoryTypeIndex = memory_type,
     }
-    result = vk.AllocateMemory(global_context.device.logical_device, &allocate_info,
-                               global_context.allocator, &out_image.memory)
+    result = vk.AllocateMemory(g_context.device.logical_device, &allocate_info,
+                               g_context.allocator, &out_image.memory)
     if result != vk.Result.SUCCESS {
         log.errorf("Failed to allocate memory: %v", result)
         return
     }
 
     // Bind memory
-    result = vk.BindImageMemory(global_context.device.logical_device, out_image.handle,
+    result = vk.BindImageMemory(g_context.device.logical_device, out_image.handle,
                                 out_image.memory, 0)    // TODO: Configurable memory offset
     if result != vk.Result.SUCCESS {
         log.errorf("Failed to bind memory: %v", result)
@@ -118,8 +118,8 @@ vk_image_view_create :: proc(image: ^Vulkan_Image, format: vk.Format,
         },
     }
 
-    result := vk.CreateImageView(global_context.device.logical_device, &view_create_info,
-                                 global_context.allocator, &image.view)
+    result := vk.CreateImageView(g_context.device.logical_device, &view_create_info,
+                                 g_context.allocator, &image.view)
     if result != vk.Result.SUCCESS {
         log.errorf("Failed to create image view: %v", result)
         return
@@ -133,18 +133,18 @@ vk_image_view_create :: proc(image: ^Vulkan_Image, format: vk.Format,
 @private
 vk_image_destroy :: proc(image: ^Vulkan_Image) {
     if image.view != 0 {
-        vk.DestroyImageView(global_context.device.logical_device, image.view,
-                            global_context.allocator)
+        vk.DestroyImageView(g_context.device.logical_device, image.view,
+                            g_context.allocator)
         image.view = 0
     }
     if image.memory != 0 {
-        vk.FreeMemory(global_context.device.logical_device, image.memory,
-                      global_context.allocator)
+        vk.FreeMemory(g_context.device.logical_device, image.memory,
+                      g_context.allocator)
         image.memory = 0
     }
     if image.handle != 0 {
-        vk.DestroyImage(global_context.device.logical_device, image.handle,
-                        global_context.allocator)
+        vk.DestroyImage(g_context.device.logical_device, image.handle,
+                        g_context.allocator)
         image.handle = 0
     }
 }

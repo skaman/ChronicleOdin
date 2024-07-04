@@ -73,7 +73,7 @@ Mouse_Event :: struct {
 }
 
 // Structure for gamepad connection events
-Gamepad_Event :: struct {
+Gamepad_Connection_Event :: struct {
     gamepad_id: Gamepad_Id, // The identifier for the connected gamepad
     is_connected: bool,     // Whether the gamepad is connected (true) or disconnected (false)
 }
@@ -92,8 +92,8 @@ Gamepad_Button_Event :: struct {
     pressed: bool,          // Whether the button was pressed (true) or released (false)
 }
 
-// Union of all possible platform events
-Platform_Event :: union {
+// Union of all possible windows events
+Window_Event :: union {
     Window_Created_Event,          // Event for window creation
     Window_Destroyed_Event,        // Event for window destruction
     Window_Close_Requested_Event,  // Event for window close request
@@ -102,9 +102,13 @@ Platform_Event :: union {
     Key_Event,                     // Event for key actions
     Char_Event,                    // Event for character input
     Mouse_Event,                   // Event for mouse actions
-    Gamepad_Event,                 // Event for gamepad connection
-    Gamepad_Axis_Event,            // Event for gamepad axis
-    Gamepad_Button_Event,          // Event for gamepad button
+}
+
+// Union of all possible gamepad events
+Gamepad_Event :: union {
+    Gamepad_Connection_Event,   // Event for gamepad connection
+    Gamepad_Axis_Event,         // Event for gamepad axis
+    Gamepad_Button_Event,       // Event for gamepad button
 }
 
 // Enumeration of possible keys

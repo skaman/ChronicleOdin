@@ -202,7 +202,7 @@ vk_physical_device_meets_requirements :: proc(physical_device: vk.PhysicalDevice
 @(private="file")
 vk_select_physical_device :: proc(surface: vk.SurfaceKHR) -> b8 {
     physical_device_count : u32
-    result := vk.EnumeratePhysicalDevices(global_context.instance, &physical_device_count, nil)
+    result := vk.EnumeratePhysicalDevices(g_context.instance, &physical_device_count, nil)
     if result != vk.Result.SUCCESS {
         log.errorf("Failed to enumerate physical devices: %v", result)
         return false
@@ -214,7 +214,7 @@ vk_select_physical_device :: proc(surface: vk.SurfaceKHR) -> b8 {
     }
 
     physical_devices := make([]vk.PhysicalDevice, physical_device_count, context.temp_allocator)
-    result = vk.EnumeratePhysicalDevices(global_context.instance, &physical_device_count,
+    result = vk.EnumeratePhysicalDevices(g_context.instance, &physical_device_count,
                                          raw_data(physical_devices))
     if result != vk.Result.SUCCESS {
         log.errorf("Failed to enumerate physical devices: %v", result)
@@ -250,7 +250,7 @@ vk_select_physical_device :: proc(surface: vk.SurfaceKHR) -> b8 {
                                                            &features,
                                                            &requirements,
                                                            &queue_family_info,
-                                                           &global_context.device.swapchain_support)
+                                                           &g_context.device.swapchain_support)
         if meet_requirements {
             switch properties.deviceType {
                 case .INTEGRATED_GPU:
@@ -281,22 +281,22 @@ vk_select_physical_device :: proc(surface: vk.SurfaceKHR) -> b8 {
                 }
             }
 
-            global_context.device.physical_device = physical_device
-            global_context.device.graphics_queue_index = queue_family_info.graphics_family_index
-            global_context.device.present_queue_index = queue_family_info.present_family_index
-            global_context.device.transfer_queue_index = queue_family_info.transfer_family_index
+            g_context.device.physical_device = physical_device
+            g_context.device.graphics_queue_index = queue_family_info.graphics_family_index
+            g_context.device.present_queue_index = queue_family_info.present_family_index
+            g_context.device.transfer_queue_index = queue_family_info.transfer_family_index
             // NOTE: set compute index here if needed
             //window_context.device.compute_queue_index = queue_family_info.compute_family_index
 
-            global_context.device.properties = properties
-            global_context.device.features = features
-            global_context.device.memory = memory
+            g_context.device.properties = properties
+            g_context.device.features = features
+            g_context.device.memory = memory
             break
         }
     }
 
     // ensure a physical device was found
-    if global_context.device.physical_device == nil {
+    if g_context.device.physical_device == nil {
         log.error("Failed to find a suitable physical device")
         return false
     }
@@ -322,9 +322,9 @@ vk_device_create :: proc(surface: vk.SurfaceKHR) -> b8 {
 
     log.info("Creating logical device...")
     present_shares_graphics_queue :=
-        global_context.device.graphics_queue_index == global_context.device.present_queue_index
+        g_context.device.graphics_queue_index == g_context.device.present_queue_index
     transfer_shares_graphics_queue :=
-        global_context.device.graphics_queue_index == global_context.device.transfer_queue_index
+        g_context.device.graphics_queue_index == g_context.device.transfer_queue_index
     
     index_count: u32 = 1
     if !present_shares_graphics_queue {
@@ -336,14 +336,14 @@ vk_device_create :: proc(surface: vk.SurfaceKHR) -> b8 {
 
     indices := make([]u32, index_count, context.temp_allocator)
     index := 0
-    indices[index] = global_context.device.graphics_queue_index
+    indices[index] = g_context.device.graphics_queue_index
     index += 1
     if !present_shares_graphics_queue {
-        indices[index] = global_context.device.present_queue_index
+        indices[index] = g_context.device.present_queue_index
         index += 1
     }
     if !transfer_shares_graphics_queue {
-        indices[index] = global_context.device.transfer_queue_index
+        indices[index] = g_context.device.transfer_queue_index
         index += 1
     }
 
@@ -357,7 +357,7 @@ vk_device_create :: proc(surface: vk.SurfaceKHR) -> b8 {
             queueFamilyIndex = indices[i],
             queueCount = 1,
             // TODO: Enable this for a future enhancement
-            //queueCount = indices[i] == global_context.device.graphics_queue_index ? 2 : 1,
+            //queueCount = indices[i] == g_context.device.graphics_queue_index ? 2 : 1,
             pQueuePriorities = &queue_priority,
         }
     }
@@ -385,10 +385,10 @@ vk_device_create :: proc(surface: vk.SurfaceKHR) -> b8 {
     }
 
     // create logical device
-    result := vk.CreateDevice(global_context.device.physical_device,
+    result := vk.CreateDevice(g_context.device.physical_device,
                               &device_create_info,
-                              global_context.allocator,
-                              &global_context.device.logical_device)
+                              g_context.allocator,
+                              &g_context.device.logical_device)
     if result != vk.Result.SUCCESS {
         log.errorf("Failed to create logical device: %v", result)
         return false
@@ -397,20 +397,20 @@ vk_device_create :: proc(surface: vk.SurfaceKHR) -> b8 {
     log.info("Logical device created")
 
     // get queue handles
-    vk.GetDeviceQueue(global_context.device.logical_device,
-                      global_context.device.graphics_queue_index,
+    vk.GetDeviceQueue(g_context.device.logical_device,
+                      g_context.device.graphics_queue_index,
                       0,
-                      &global_context.device.graphics_queue)
+                      &g_context.device.graphics_queue)
 
-    vk.GetDeviceQueue(global_context.device.logical_device,
-                      global_context.device.present_queue_index,
+    vk.GetDeviceQueue(g_context.device.logical_device,
+                      g_context.device.present_queue_index,
                       0,
-                      &global_context.device.present_queue)
+                      &g_context.device.present_queue)
 
-    vk.GetDeviceQueue(global_context.device.logical_device,
-                      global_context.device.transfer_queue_index,
+    vk.GetDeviceQueue(g_context.device.logical_device,
+                      g_context.device.transfer_queue_index,
                       0,
-                      &global_context.device.transfer_queue)
+                      &g_context.device.transfer_queue)
 
     log.info("Queue handles acquired")
 
@@ -419,12 +419,12 @@ vk_device_create :: proc(surface: vk.SurfaceKHR) -> b8 {
         sType = vk.StructureType.COMMAND_POOL_CREATE_INFO,
         pNext = nil,
         flags = {.RESET_COMMAND_BUFFER},
-        queueFamilyIndex = global_context.device.graphics_queue_index,
+        queueFamilyIndex = g_context.device.graphics_queue_index,
     }
-    result = vk.CreateCommandPool(global_context.device.logical_device,
+    result = vk.CreateCommandPool(g_context.device.logical_device,
                                   &command_pool_create_info,
-                                  global_context.allocator,
-                                  &global_context.device.graphics_command_pool)
+                                  g_context.allocator,
+                                  &g_context.device.graphics_command_pool)
     if result != vk.Result.SUCCESS {
         log.errorf("Failed to create command pool: %v", result)
         return false
@@ -438,41 +438,41 @@ vk_device_create :: proc(surface: vk.SurfaceKHR) -> b8 {
 // Destroys the Vulkan device.
 @private
 vk_device_destroy :: proc() {
-    global_context.device.graphics_queue = nil
-    global_context.device.present_queue = nil
-    global_context.device.transfer_queue = nil
+    g_context.device.graphics_queue = nil
+    g_context.device.present_queue = nil
+    g_context.device.transfer_queue = nil
 
     log.info("Destroying command pool...")
-    if global_context.device.graphics_command_pool != 0 {
-        vk.DestroyCommandPool(global_context.device.logical_device,
-                              global_context.device.graphics_command_pool,
-                              global_context.allocator)
-        global_context.device.graphics_command_pool = 0
+    if g_context.device.graphics_command_pool != 0 {
+        vk.DestroyCommandPool(g_context.device.logical_device,
+                              g_context.device.graphics_command_pool,
+                              g_context.allocator)
+        g_context.device.graphics_command_pool = 0
     }
 
     log.info("Destroying logical device...")
-    if global_context.device.logical_device != nil {
-        vk.DestroyDevice(global_context.device.logical_device, global_context.allocator)
-        global_context.device.logical_device = nil
+    if g_context.device.logical_device != nil {
+        vk.DestroyDevice(g_context.device.logical_device, g_context.allocator)
+        g_context.device.logical_device = nil
     }
 
     log.info("Releasing physical device resources...")
-    global_context.device.physical_device = nil
+    g_context.device.physical_device = nil
     
-    if global_context.device.swapchain_support.surface_formats != nil {
-        delete(global_context.device.swapchain_support.surface_formats)
-        global_context.device.swapchain_support.surface_formats = nil
+    if g_context.device.swapchain_support.surface_formats != nil {
+        delete(g_context.device.swapchain_support.surface_formats)
+        g_context.device.swapchain_support.surface_formats = nil
     }
     
-    if global_context.device.swapchain_support.present_modes != nil {
-        delete(global_context.device.swapchain_support.present_modes)
-        global_context.device.swapchain_support.present_modes = nil
+    if g_context.device.swapchain_support.present_modes != nil {
+        delete(g_context.device.swapchain_support.present_modes)
+        g_context.device.swapchain_support.present_modes = nil
     }
 
-    global_context.device.swapchain_support = {}
-    global_context.device.graphics_queue_index = math.max(u32)
-    global_context.device.present_queue_index = math.max(u32)
-    global_context.device.transfer_queue_index = math.max(u32)
+    g_context.device.swapchain_support = {}
+    g_context.device.graphics_queue_index = math.max(u32)
+    g_context.device.present_queue_index = math.max(u32)
+    g_context.device.transfer_queue_index = math.max(u32)
 }
 
 // Queries swapchain support details for a physical device.

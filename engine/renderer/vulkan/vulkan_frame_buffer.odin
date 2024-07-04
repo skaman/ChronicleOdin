@@ -33,9 +33,9 @@ vk_frame_buffer_create :: proc(render_pass: ^Vulkan_Render_Pass,
         layers = 1,
     }
 
-    result := vk.CreateFramebuffer(global_context.device.logical_device,
+    result := vk.CreateFramebuffer(g_context.device.logical_device,
                                    &frame_buffer_create_info,
-                                   global_context.allocator,
+                                   g_context.allocator,
                                    &out_frame_buffer.handle)
     if result != .SUCCESS {
         log.error("Failed to create frame buffer")
@@ -49,9 +49,9 @@ vk_frame_buffer_create :: proc(render_pass: ^Vulkan_Render_Pass,
 //   frame_buffer: ^Vulkan_Frame_Buffer - Pointer to the Vulkan frame buffer to be destroyed.
 @private
 vk_frame_buffer_destroy :: proc(frame_buffer: ^Vulkan_Frame_Buffer) {
-    vk.DestroyFramebuffer(global_context.device.logical_device,
+    vk.DestroyFramebuffer(g_context.device.logical_device,
                           frame_buffer.handle,
-                          global_context.allocator)
+                          g_context.allocator)
 
     if (frame_buffer.attachments != nil) {
         delete(frame_buffer.attachments)

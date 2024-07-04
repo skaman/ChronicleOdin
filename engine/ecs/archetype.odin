@@ -139,7 +139,7 @@ add_row_to_archetype :: proc(archetype: ^Archetype, entity: Entity_Id) {
         }
     }
 
-    global_records[entity] = { archetype, archetype.count }
+    g_records[entity] = { archetype, archetype.count }
 
     archetype.count += 1
 }
@@ -163,7 +163,7 @@ remove_row_from_archetype :: proc(archetype: ^Archetype, index: u32) {
     entity := get_value_from_archetype(archetype, index, Entity_Id)
 
     if index < archetype.count - 1 {
-        global_records[entity^] = { archetype, index }
+        g_records[entity^] = { archetype, index }
     }
 
     archetype.count -= 1

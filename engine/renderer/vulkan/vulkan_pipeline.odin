@@ -152,9 +152,9 @@ vk_graphics_pipeline_create :: proc(renderpass: ^Vulkan_Render_Pass,
     }
 
     // Create the pipeline layout
-    result := vk.CreatePipelineLayout(global_context.device.logical_device,
+    result := vk.CreatePipelineLayout(g_context.device.logical_device,
                                       &pipeline_layout_create_info,
-                                      global_context.allocator,
+                                      g_context.allocator,
                                       &out_pipeline.layout)
     if result != .SUCCESS {
         log.error("Failed to create pipeline layout")
@@ -182,11 +182,11 @@ vk_graphics_pipeline_create :: proc(renderpass: ^Vulkan_Render_Pass,
         basePipelineIndex = -1,
     }
 
-    result = vk.CreateGraphicsPipelines(global_context.device.logical_device,
+    result = vk.CreateGraphicsPipelines(g_context.device.logical_device,
                                         0,
                                         1,
                                         &pipeline_create_info,
-                                        global_context.allocator,
+                                        g_context.allocator,
                                         &out_pipeline.handle)
     if result != .SUCCESS {
         log.error("Failed to create graphics pipeline")
@@ -203,16 +203,16 @@ vk_graphics_pipeline_create :: proc(renderpass: ^Vulkan_Render_Pass,
 @private
 vk_pipeline_destroy :: proc(pipeline: ^Vulkan_Pipeline) {
     if pipeline.handle != 0 {
-        vk.DestroyPipeline(global_context.device.logical_device,
+        vk.DestroyPipeline(g_context.device.logical_device,
                            pipeline.handle,
-                           global_context.allocator)
+                           g_context.allocator)
         pipeline.handle = 0
     }
 
     if pipeline.layout != 0 {
-        vk.DestroyPipelineLayout(global_context.device.logical_device,
+        vk.DestroyPipelineLayout(g_context.device.logical_device,
                                  pipeline.layout,
-                                 global_context.allocator)
+                                 g_context.allocator)
         pipeline.layout = 0
     }
 }

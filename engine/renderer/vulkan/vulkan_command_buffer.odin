@@ -24,7 +24,7 @@ vk_command_buffer_allocate :: proc(pool: vk.CommandPool, is_primary: b8,
     }
 
     out_command_buffer.state = .Not_Allocated
-    result := vk.AllocateCommandBuffers(global_context.device.logical_device,
+    result := vk.AllocateCommandBuffers(g_context.device.logical_device,
                                         &allocate_info,
                                         &out_command_buffer.handle)
     if result != .SUCCESS {
@@ -41,7 +41,7 @@ vk_command_buffer_allocate :: proc(pool: vk.CommandPool, is_primary: b8,
 //   command_buffer: ^Vulkan_Command_Buffer - Pointer to the Vulkan command buffer to be freed.
 @private
 vk_command_buffer_free :: proc(pool: vk.CommandPool, command_buffer: ^Vulkan_Command_Buffer) {
-    vk.FreeCommandBuffers(global_context.device.logical_device,
+    vk.FreeCommandBuffers(g_context.device.logical_device,
                           pool,
                           1,
                           &command_buffer.handle)
